@@ -84,14 +84,14 @@ func NewAdapter(ctx context.Context, conf Config) (joe.Adapter, error) {
 	return a, nil
 }
 
-func (a *API) Register(b *joe.Brain) {
+func (a *API) Register(r joe.EventRegistry) {
 	// Start message handling in two goroutines. They will be closed when we
 	// disconnect the RTM upon adapter.Close().
 	go a.rtm.ManageConnection()
-	go a.handleSlackEvents(b)
+	go a.handleSlackEvents(r.Channel())
 }
 
-func (a *API) handleSlackEvents(brain *joe.Brain) {
+func (a *API) handleSlackEvents(events chan<- joe.Event) {
 	for msg := range a.rtm.IncomingEvents {
 		switch ev := msg.Data.(type) {
 		case *slack.HelloEvent:
@@ -99,7 +99,7 @@ func (a *API) handleSlackEvents(brain *joe.Brain) {
 
 		case *slack.MessageEvent:
 			a.logger.Debug("Received message", zap.Any("event", ev))
-			a.handleMessageEvent(ev, brain)
+			a.handleMessageEvent(ev, events)
 
 		case *slack.RTMError:
 			a.logger.Error("Slack Real Time Messaging (RTM) error", zap.Any("event", ev))
@@ -109,10 +109,12 @@ func (a *API) handleSlackEvents(brain *joe.Brain) {
 			return
 
 		case *slack.UserTypingEvent:
-			brain.Emit(joe.UserTypingEvent{
-				User:    a.userByID(ev.User),
-				Channel: ev.Channel,
-			})
+			go func() {
+				events <- joe.Event{Data: joe.UserTypingEvent{
+					User:    a.userByID(ev.User),
+					Channel: ev.Channel,
+				}}
+			}()
 
 		default:
 			// Ignore other events..
@@ -121,7 +123,7 @@ func (a *API) handleSlackEvents(brain *joe.Brain) {
 
 }
 
-func (a *API) handleMessageEvent(ev *slack.MessageEvent, b *joe.Brain) {
+func (a *API) handleMessageEvent(ev *slack.MessageEvent, events chan<- joe.Event) {
 	// check if we have a DM, or standard channel post
 	direct := strings.HasPrefix(ev.Msg.Channel, "D")
 	if !direct && !strings.Contains(ev.Msg.Text, "<@"+a.userID+">") {
@@ -130,10 +132,10 @@ func (a *API) handleMessageEvent(ev *slack.MessageEvent, b *joe.Brain) {
 	}
 
 	text := strings.TrimSpace(strings.TrimPrefix(ev.Text, "<@"+a.userID+">"))
-	b.Emit(joe.ReceiveMessageEvent{
+	events <- joe.Event{Data: joe.ReceiveMessageEvent{
 		Text:    text,
 		Channel: ev.Channel,
-	})
+	}}
 }
 
 func (a *API) userByID(userID string) joe.User {
