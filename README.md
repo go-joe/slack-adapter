@@ -4,7 +4,7 @@
 	<a href="https://github.com/go-joe/slack-adapter/releases"><img src="https://img.shields.io/github/tag/go-joe/slack-adapter.svg?label=version&color=brightgreen"></a>
 	<a href="https://circleci.com/gh/go-joe/slack-adapter/tree/master"><img src="https://circleci.com/gh/go-joe/slack-adapter/tree/master.svg?style=shield"></a>
 	<a href="https://godoc.org/github.com/go-joe/slack-adapter"><img src="https://img.shields.io/badge/godoc-reference-blue.svg?color=blue"></a>
-	<a href="https://github.com/go-joe/slack-adapter/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-4183c4.svg?color=blue"></a>
+	<a href="https://github.com/go-joe/joe/blob/master/LICENSE"><img src="https://img.shields.io/github/license/go-joe/joe.svg?color=blue"></a>
 </p>
 
 ---
@@ -62,7 +62,7 @@ See also the list of [contributors][contributors] who participated in this proje
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the BSD-3-Clause License - see the [LICENSE](LICENSE) file for details.
 
 [joe]: https://github.com/go-joe/joe
 [go-modules]: https://github.com/golang/go/wiki/Modules
