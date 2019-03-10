@@ -1,0 +1,64 @@
+linters-settings:
+  govet:
+    check-shadowing: true
+  golint:
+    min-confidence: 0
+  gocyclo:
+    min-complexity: 10
+  maligned:
+    suggest-new: true
+  dupl:
+    threshold: 100
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+  misspell:
+    locale: US
+  lll:
+    line-length: 140
+  goimports:
+    local-prefixes: github.com/golangci/golangci-lint
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+      - experimental
+      - diagnostic
+      - opinionated
+    disabled-checks:
+      - unnamedResult
+
+linters:
+  enable-all: true
+  disable:
+    - maligned
+    - prealloc
+    - depguard
+    - interfacer
+
+service:
+  golangci-lint-version: 1.15.x # use the fixed version to not introduce new linters unexpectedly
+  prepare:
+    - GO111MODULE=on go mod vendor # required currently or golangci breaks
+
+issues:
+  exclude-use-default: false
+  exclude-rules:
+    - text: "G104: Errors unhandled."
+      path: ".+_test\\.go"
+      linters:
+        - gosec
+
+    - text: "should have a package comment, unless it's in another file for this package"
+      linters:
+        - golint
+
+    - text: "Using the variable on range scope `c` in function literal"
+      path: ".+_test\\.go"
+      linters:
+        - scopelint
+
+    - text: "`ctx` is a global variable"
+      path: ".+_test\\.go"
+      linters:
+        - gochecknoglobals
