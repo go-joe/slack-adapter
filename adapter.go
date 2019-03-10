@@ -5,11 +5,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/go-joe/joe"
 	"github.com/nlopes/slack"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-
-	"github.com/go-joe/joe"
 )
 
 type Config struct {
@@ -84,14 +83,14 @@ func NewAdapter(ctx context.Context, conf Config) (joe.Adapter, error) {
 	return a, nil
 }
 
-func (a *API) Register(r joe.EventRegistry) {
+func (a *API) RegisterAt(brain *joe.Brain) {
 	// Start message handling in two goroutines. They will be closed when we
 	// disconnect the RTM upon adapter.Close().
 	go a.rtm.ManageConnection()
-	go a.handleSlackEvents(r.Channel())
+	go a.handleSlackEvents(brain)
 }
 
-func (a *API) handleSlackEvents(events chan<- joe.Event) {
+func (a *API) handleSlackEvents(brain *joe.Brain) {
 	for msg := range a.rtm.IncomingEvents {
 		switch ev := msg.Data.(type) {
 		case *slack.HelloEvent:
@@ -99,7 +98,7 @@ func (a *API) handleSlackEvents(events chan<- joe.Event) {
 
 		case *slack.MessageEvent:
 			a.logger.Debug("Received message", zap.Any("event", ev))
-			a.handleMessageEvent(ev, events)
+			a.handleMessageEvent(ev, brain)
 
 		case *slack.RTMError:
 			a.logger.Error("Slack Real Time Messaging (RTM) error", zap.Any("event", ev))
@@ -109,12 +108,10 @@ func (a *API) handleSlackEvents(events chan<- joe.Event) {
 			return
 
 		case *slack.UserTypingEvent:
-			go func() {
-				events <- joe.Event{Data: joe.UserTypingEvent{
-					User:    a.userByID(ev.User),
-					Channel: ev.Channel,
-				}}
-			}()
+			brain.Emit(joe.UserTypingEvent{
+				User:    a.userByID(ev.User),
+				Channel: ev.Channel,
+			})
 
 		default:
 			// Ignore other events..
@@ -123,7 +120,7 @@ func (a *API) handleSlackEvents(events chan<- joe.Event) {
 
 }
 
-func (a *API) handleMessageEvent(ev *slack.MessageEvent, events chan<- joe.Event) {
+func (a *API) handleMessageEvent(ev *slack.MessageEvent, brain *joe.Brain) {
 	// check if we have a DM, or standard channel post
 	direct := strings.HasPrefix(ev.Msg.Channel, "D")
 	if !direct && !strings.Contains(ev.Msg.Text, "<@"+a.userID+">") {
@@ -132,10 +129,10 @@ func (a *API) handleMessageEvent(ev *slack.MessageEvent, events chan<- joe.Event
 	}
 
 	text := strings.TrimSpace(strings.TrimPrefix(ev.Text, "<@"+a.userID+">"))
-	events <- joe.Event{Data: joe.ReceiveMessageEvent{
+	brain.Emit(joe.ReceiveMessageEvent{
 		Text:    text,
 		Channel: ev.Channel,
-	}}
+	})
 }
 
 func (a *API) userByID(userID string) joe.User {
