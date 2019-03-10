@@ -52,6 +52,8 @@ func Adapter(token string, opts ...Option) joe.Module {
 	}
 }
 
+// NewAdapter creates a new slack adapter. Note that you will usually configure
+// the slack adapter as joe.Module (i.e. using the "slack.Adapter(…)" function.
 func NewAdapter(ctx context.Context, conf Config) (joe.Adapter, error) {
 	a := &API{
 		client:  slack.New(conf.Token, slack.OptionDebug(conf.Debug)),
@@ -83,6 +85,8 @@ func NewAdapter(ctx context.Context, conf Config) (joe.Adapter, error) {
 	return a, nil
 }
 
+// RegisterAt implements the joe.Adapter interface by emitting the slack API
+// events to the given brain.
 func (a *API) RegisterAt(brain *joe.Brain) {
 	// Start message handling in two goroutines. They will be closed when we
 	// disconnect the RTM upon adapter.Close().
@@ -137,11 +141,11 @@ func (a *API) handleMessageEvent(ev *slack.MessageEvent, brain *joe.Brain) {
 
 func (a *API) userByID(userID string) joe.User {
 	a.usersMu.RLock()
-	username, ok := a.users[userID]
+	user, ok := a.users[userID]
 	a.usersMu.RUnlock()
 
 	if ok {
-		return username
+		return user
 	}
 
 	resp, err := a.client.GetUserInfo(userID)
@@ -151,7 +155,7 @@ func (a *API) userByID(userID string) joe.User {
 		)
 	}
 
-	user := joe.User{
+	user = joe.User{
 		ID:       resp.ID,
 		Name:     resp.Name,
 		RealName: resp.RealName,
@@ -164,6 +168,8 @@ func (a *API) userByID(userID string) joe.User {
 	return user
 }
 
+// Send implements joe.Adapter by sending all received text messages to the
+// given slack channel ID.
 func (a *API) Send(text, channelID string) error {
 	a.logger.Info("Sending message to channel",
 		zap.String("channel_id", channelID),
@@ -174,6 +180,7 @@ func (a *API) Send(text, channelID string) error {
 	return nil
 }
 
+// Close disconnects the adapter from the slack API.
 func (a *API) Close() error {
 	return a.rtm.Disconnect()
 }
