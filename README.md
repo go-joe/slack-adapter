@@ -4,7 +4,7 @@
 	<a href="https://github.com/go-joe/slack-adapter/releases"><img src="https://img.shields.io/github/tag/go-joe/slack-adapter.svg?label=version&color=brightgreen"></a>
 	<a href="https://circleci.com/gh/go-joe/slack-adapter/tree/master"><img src="https://circleci.com/gh/go-joe/slack-adapter/tree/master.svg?style=shield"></a>
 	<a href="https://godoc.org/github.com/go-joe/slack-adapter"><img src="https://img.shields.io/badge/godoc-reference-blue.svg?color=blue"></a>
-	<a href="https://github.com/go-joe/joe/blob/master/LICENSE"><img src="https://img.shields.io/github/license/go-joe/joe.svg?color=blue"></a>
+	<a href="https://github.com/go-joe/joe/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-blue.svg"></a>
 </p>
 
 ---
