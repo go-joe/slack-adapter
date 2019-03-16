@@ -101,7 +101,6 @@ func (a *API) handleSlackEvents(brain *joe.Brain) {
 			// Ignore hello
 
 		case *slack.MessageEvent:
-			a.logger.Debug("Received message", zap.Any("event", ev))
 			a.handleMessageEvent(ev, brain)
 
 		case *slack.RTMError:

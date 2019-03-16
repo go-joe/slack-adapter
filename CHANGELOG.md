@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
-- Nothing so far
+- Do not leak received messages as debug messages
 
 ## [v0.2.0] - 2019-03-10
 
