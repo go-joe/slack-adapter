@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial alpha release
 
-[Unreleased]: https://github.com/go-joe/joe/compare/v0.3.0...HEAD
-[v0.3.0]: https://github.com/go-joe/joe/compare/v0.2.0...v0.3.0
-[v0.2.0]: https://github.com/go-joe/joe/compare/v0.1.0...v0.2.0
-[v0.1.0]: https://github.com/go-joe/joe/releases/tag/v0.1.0
+[Unreleased]: https://github.com/go-joe/slack-adapter/compare/v0.3.0...HEAD
+[v0.3.0]: https://github.com/go-joe/slack-adapter/compare/v0.2.0...v0.3.0
+[v0.2.0]: https://github.com/go-joe/slack-adapter/compare/v0.1.0...v0.2.0
+[v0.1.0]: https://github.com/go-joe/slack-adapter/releases/tag/v0.1.0
