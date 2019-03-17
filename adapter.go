@@ -12,12 +12,8 @@ import (
 	"go.uber.org/zap"
 )
 
-type Config struct {
-	Token  string
-	Debug  bool
-	Logger *zap.Logger
-}
-
+// BotAdapter implements a joe.Adapter that reads and writes messages to and
+// from Slack.
 type BotAdapter struct {
 	context context.Context
 	logger  *zap.Logger
@@ -29,12 +25,20 @@ type BotAdapter struct {
 	users   map[string]joe.User
 }
 
+// Config contains the configuration of a BotAdapter.
+type Config struct {
+	Token  string
+	Debug  bool
+	Logger *zap.Logger
+}
+
 type slackAPI interface {
 	AuthTestContext(context.Context) (*slack.AuthTestResponse, error)
 	NewRTM(...slack.RTMOption) *slack.RTM
 	GetUserInfo(user string) (*slack.User, error)
 }
 
+// Adapter returns a new slack Adapter as joe.Module.
 func Adapter(token string, opts ...Option) joe.Module {
 	return func(joeConf *joe.Config) error {
 		conf := Config{Token: token}
@@ -63,10 +67,10 @@ func Adapter(token string, opts ...Option) joe.Module {
 // the slack adapter as joe.Module (i.e. using the "slack.Adapter(…)" function.
 func NewAdapter(ctx context.Context, conf Config) (*BotAdapter, error) {
 	client := slack.New(conf.Token, slack.OptionDebug(conf.Debug)) // TODO: logger option?
-	return newAdapter(client, ctx, conf)
+	return newAdapter(ctx, client, conf)
 }
 
-func newAdapter(client slackAPI, ctx context.Context, conf Config) (*BotAdapter, error) {
+func newAdapter(ctx context.Context, client slackAPI, conf Config) (*BotAdapter, error) {
 	a := &BotAdapter{
 		client:  client,
 		context: ctx,

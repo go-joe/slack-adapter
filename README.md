@@ -34,9 +34,38 @@ If you want to hack on the adapter you can of course also go get it directly:
 go get github.com/go-joe/slack-adapter
 ```
 
-### Minimal example
+### Example usage
 
-**TODO**
+In order to connect your bot to slack you can simply pass it as module when
+creating a new bot:
+
+```go
+package main
+
+import (
+	"github.com/go-joe/joe"
+	"github.com/go-joe/slack-adapter"
+)
+
+func main() {
+	b := joe.New("example-bot",
+		slack.Adapter(os.Getenv("SLACK_TOKEN")),
+		…
+    )
+	
+	b.Respond("ping", Pong)
+
+	err := b.Run()
+	if err != nil {
+		b.Logger.Fatal(err.Error())
+	}
+}
+```
+
+So far the adapter will emit the following events to the robot brain:
+
+- `joe.ReceiveMessageEvent`
+- `joe.UserTypingEvent`
 
 ## Built With
 
@@ -46,8 +75,10 @@ go get github.com/go-joe/slack-adapter
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of
-conduct and on the process for submitting pull requests to this repository.
+The current implementation is rather minimal and there are many more features
+that could be implemented on the slack adapter so you are highly encouraged to
+contribute. If you want to hack on this repository, please read the short
+[CONTRIBUTING.md](CONTRIBUTING.md) guide first.
 
 ## Versioning
 

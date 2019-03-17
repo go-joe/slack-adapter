@@ -29,7 +29,7 @@ func newTestAdapter(t *testing.T) (*BotAdapter, *slack.RTM) {
 	client.On("NewRTM").Return(rtm)
 
 	conf := Config{Logger: logger}
-	a, err := newAdapter(client, ctx, conf)
+	a, err := newAdapter(ctx, client, conf)
 	require.NoError(t, err)
 
 	return a, rtm

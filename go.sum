@@ -1,7 +1,5 @@
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/go-joe/joe v0.2.0 h1:dwpxKXoTZ79S9bqT97UuC08bgs54kw7VF3z0bM5T4+8=
-github.com/go-joe/joe v0.2.0/go.mod h1:oU4i1doEwEjGpiV6JUDzbntxojDIggaOSIncm4lSBPo=
 github.com/go-joe/joe v0.3.0 h1:ZoC3VVz+33XzMt9EqF/IwGOURcUWH39/fcOdvPFwPKA=
 github.com/go-joe/joe v0.3.0/go.mod h1:oU4i1doEwEjGpiV6JUDzbntxojDIggaOSIncm4lSBPo=
 github.com/gorilla/websocket v1.4.0 h1:WDFjx/TMzVgy9VdMMQi2K2Emtwi2QcUQsztZ/zLaH/Q=
