@@ -5,8 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Unit tests :)
+
 ### Changed
 - Do not leak received messages as debug messages
+- Rename `API` type to `BotAdapter`
+- `NewAdapter(…)` now returns a`*BotAdapter` instead of a `joe.Adapter`
 
 ## [v0.2.0] - 2019-03-10
 

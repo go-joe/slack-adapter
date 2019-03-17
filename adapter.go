@@ -2,6 +2,7 @@ package slack
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -17,15 +18,21 @@ type Config struct {
 	Logger *zap.Logger
 }
 
-type API struct {
+type BotAdapter struct {
 	context context.Context
 	logger  *zap.Logger
-	client  *slack.Client
+	client  slackAPI
 	rtm     *slack.RTM
 	userID  string
 
 	usersMu sync.RWMutex
 	users   map[string]joe.User
+}
+
+type slackAPI interface {
+	AuthTestContext(context.Context) (*slack.AuthTestResponse, error)
+	NewRTM(...slack.RTMOption) *slack.RTM
+	GetUserInfo(user string) (*slack.User, error)
 }
 
 func Adapter(token string, opts ...Option) joe.Module {
@@ -54,9 +61,14 @@ func Adapter(token string, opts ...Option) joe.Module {
 
 // NewAdapter creates a new slack adapter. Note that you will usually configure
 // the slack adapter as joe.Module (i.e. using the "slack.Adapter(…)" function.
-func NewAdapter(ctx context.Context, conf Config) (joe.Adapter, error) {
-	a := &API{
-		client:  slack.New(conf.Token, slack.OptionDebug(conf.Debug)),
+func NewAdapter(ctx context.Context, conf Config) (*BotAdapter, error) {
+	client := slack.New(conf.Token, slack.OptionDebug(conf.Debug)) // TODO: logger option?
+	return newAdapter(client, ctx, conf)
+}
+
+func newAdapter(client slackAPI, ctx context.Context, conf Config) (*BotAdapter, error) {
+	a := &BotAdapter{
+		client:  client,
 		context: ctx,
 		logger:  conf.Logger,
 		users:   map[string]joe.User{}, // TODO: cache expiration?
@@ -87,14 +99,14 @@ func NewAdapter(ctx context.Context, conf Config) (joe.Adapter, error) {
 
 // RegisterAt implements the joe.Adapter interface by emitting the slack API
 // events to the given brain.
-func (a *API) RegisterAt(brain *joe.Brain) {
+func (a *BotAdapter) RegisterAt(brain *joe.Brain) {
 	// Start message handling in two goroutines. They will be closed when we
 	// disconnect the RTM upon adapter.Close().
 	go a.rtm.ManageConnection()
 	go a.handleSlackEvents(brain)
 }
 
-func (a *API) handleSlackEvents(brain *joe.Brain) {
+func (a *BotAdapter) handleSlackEvents(brain *joe.Brain) {
 	for msg := range a.rtm.IncomingEvents {
 		switch ev := msg.Data.(type) {
 		case *slack.HelloEvent:
@@ -123,22 +135,23 @@ func (a *API) handleSlackEvents(brain *joe.Brain) {
 
 }
 
-func (a *API) handleMessageEvent(ev *slack.MessageEvent, brain *joe.Brain) {
+func (a *BotAdapter) handleMessageEvent(ev *slack.MessageEvent, brain *joe.Brain) {
 	// check if we have a DM, or standard channel post
+	selfLink := a.userLink(a.userID)
 	direct := strings.HasPrefix(ev.Msg.Channel, "D")
-	if !direct && !strings.Contains(ev.Msg.Text, "<@"+a.userID+">") {
+	if !direct && !strings.Contains(ev.Msg.Text, selfLink) {
 		// msg not for us!
 		return
 	}
 
-	text := strings.TrimSpace(strings.TrimPrefix(ev.Text, "<@"+a.userID+">"))
+	text := strings.TrimSpace(strings.TrimPrefix(ev.Text, selfLink))
 	brain.Emit(joe.ReceiveMessageEvent{
 		Text:    text,
 		Channel: ev.Channel,
 	})
 }
 
-func (a *API) userByID(userID string) joe.User {
+func (a *BotAdapter) userByID(userID string) joe.User {
 	a.usersMu.RLock()
 	user, ok := a.users[userID]
 	a.usersMu.RUnlock()
@@ -169,7 +182,7 @@ func (a *API) userByID(userID string) joe.User {
 
 // Send implements joe.Adapter by sending all received text messages to the
 // given slack channel ID.
-func (a *API) Send(text, channelID string) error {
+func (a *BotAdapter) Send(text, channelID string) error {
 	a.logger.Info("Sending message to channel",
 		zap.String("channel_id", channelID),
 		// do not leak actual message content since it might be sensitive
@@ -180,6 +193,13 @@ func (a *API) Send(text, channelID string) error {
 }
 
 // Close disconnects the adapter from the slack API.
-func (a *API) Close() error {
+func (a *BotAdapter) Close() error {
 	return a.rtm.Disconnect()
+}
+
+// As long as github.com/nlopes/slack does not support the "link_names=1"
+// argument we have to format the user link ourselves.
+// See https://api.slack.com/docs/message-formatting#linking_to_channels_and_users
+func (a *BotAdapter) userLink(userID string) string {
+	return fmt.Sprintf("<@%s>", userID)
 }
