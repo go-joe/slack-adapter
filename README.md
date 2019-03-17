@@ -97,5 +97,5 @@ This project is licensed under the BSD-3-Clause License - see the [LICENSE](LICE
 
 [joe]: https://github.com/go-joe/joe
 [go-modules]: https://github.com/golang/go/wiki/Modules
-[tags]: https://github.com/go-joe/joe/tags
+[tags]: https://github.com/go-joe/slack-adapter/tags
 [contributors]: https://github.com/github.com/go-joe/slack-adapter/contributors
