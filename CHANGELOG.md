@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - Nothing so far
 
+## [v0.4.0] - 2019-03-18
+### Changed
+- Update to the changed Module interface of joe v0.4.0
+
 ## [v0.3.0] - 2019-03-17
 ### Added
 - Unit tests :)
@@ -25,7 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial alpha release
 
-[Unreleased]: https://github.com/go-joe/slack-adapter/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/go-joe/slack-adapter/compare/v0.4.0...HEAD
+[v0.3.0]: https://github.com/go-joe/slack-adapter/compare/v0.3.0...v0.4.0
 [v0.3.0]: https://github.com/go-joe/slack-adapter/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/go-joe/slack-adapter/compare/v0.1.0...v0.2.0
 [v0.1.0]: https://github.com/go-joe/slack-adapter/releases/tag/v0.1.0

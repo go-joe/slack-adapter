@@ -40,7 +40,7 @@ type slackAPI interface {
 
 // Adapter returns a new slack Adapter as joe.Module.
 func Adapter(token string, opts ...Option) joe.Module {
-	return func(joeConf *joe.Config) error {
+	return joe.ModuleFunc(func(joeConf *joe.Config) error {
 		conf := Config{Token: token}
 		for _, opt := range opts {
 			err := opt(&conf)
@@ -60,7 +60,7 @@ func Adapter(token string, opts ...Option) joe.Module {
 
 		joeConf.SetAdapter(a)
 		return nil
-	}
+	})
 }
 
 // NewAdapter creates a new slack adapter. Note that you will usually configure
