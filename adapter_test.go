@@ -17,7 +17,7 @@ import (
 // compile time test to check if we are implementing the interface.
 var _ joe.Adapter = new(BotAdapter)
 
-func newTestAdapter(t *testing.T) (*BotAdapter, *slack.RTM) {
+func newTestAdapter(t *testing.T) (*BotAdapter, *mockSlack) {
 	ctx := context.Background()
 	logger := zaptest.NewLogger(t)
 	client := new(mockSlack)
@@ -25,19 +25,17 @@ func newTestAdapter(t *testing.T) (*BotAdapter, *slack.RTM) {
 	authTestResp := &slack.AuthTestResponse{User: "test-bot", UserID: "42"}
 	client.On("AuthTestContext", ctx).Return(authTestResp, nil)
 
-	rtm := &slack.RTM{IncomingEvents: make(chan slack.RTMEvent)}
-	client.On("NewRTM").Return(rtm)
-
 	conf := Config{Logger: logger}
-	a, err := newAdapter(ctx, client, conf)
+	events := make(chan slack.RTMEvent)
+	a, err := newAdapter(ctx, client, events, conf)
 	require.NoError(t, err)
 
-	return a, rtm
+	return a, client
 }
 
 func TestAdapter_IgnoreNormalMessages(t *testing.T) {
 	brain := joetest.NewBrain(t)
-	a, rtm := newTestAdapter(t)
+	a, _ := newTestAdapter(t)
 
 	done := make(chan bool)
 	go func() {
@@ -45,14 +43,14 @@ func TestAdapter_IgnoreNormalMessages(t *testing.T) {
 		done <- true
 	}()
 
-	rtm.IncomingEvents <- slack.RTMEvent{Data: &slack.MessageEvent{
+	a.events <- slack.RTMEvent{Data: &slack.MessageEvent{
 		Msg: slack.Msg{
 			Text:    "Hello world",
 			Channel: "C1H9RESGL",
 		},
 	}}
 
-	close(rtm.IncomingEvents)
+	close(a.events)
 	<-done
 	brain.Finish()
 
@@ -61,7 +59,7 @@ func TestAdapter_IgnoreNormalMessages(t *testing.T) {
 
 func TestAdapter_DirectMessages(t *testing.T) {
 	brain := joetest.NewBrain(t)
-	a, rtm := newTestAdapter(t)
+	a, _ := newTestAdapter(t)
 
 	done := make(chan bool)
 	go func() {
@@ -69,14 +67,14 @@ func TestAdapter_DirectMessages(t *testing.T) {
 		done <- true
 	}()
 
-	rtm.IncomingEvents <- slack.RTMEvent{Data: &slack.MessageEvent{
+	a.events <- slack.RTMEvent{Data: &slack.MessageEvent{
 		Msg: slack.Msg{
 			Text:    "Hello world",
 			Channel: "D023BB3L2",
 		},
 	}}
 
-	close(rtm.IncomingEvents)
+	close(a.events)
 	<-done
 	brain.Finish()
 
@@ -88,7 +86,7 @@ func TestAdapter_DirectMessages(t *testing.T) {
 
 func TestAdapter_MentionBot(t *testing.T) {
 	brain := joetest.NewBrain(t)
-	a, rtm := newTestAdapter(t)
+	a, _ := newTestAdapter(t)
 
 	done := make(chan bool)
 	go func() {
@@ -98,14 +96,14 @@ func TestAdapter_MentionBot(t *testing.T) {
 
 	msg := fmt.Sprintf("Hey %s!", a.userLink(a.userID))
 	channel := "D023BB3L2"
-	rtm.IncomingEvents <- slack.RTMEvent{Data: &slack.MessageEvent{
+	a.events <- slack.RTMEvent{Data: &slack.MessageEvent{
 		Msg: slack.Msg{
 			Text:    msg,
 			Channel: channel,
 		},
 	}}
 
-	close(rtm.IncomingEvents)
+	close(a.events)
 	<-done
 	brain.Finish()
 
@@ -117,7 +115,7 @@ func TestAdapter_MentionBot(t *testing.T) {
 
 func TestAdapter_MentionBotPrefix(t *testing.T) {
 	brain := joetest.NewBrain(t)
-	a, rtm := newTestAdapter(t)
+	a, _ := newTestAdapter(t)
 
 	done := make(chan bool)
 	go func() {
@@ -125,13 +123,13 @@ func TestAdapter_MentionBotPrefix(t *testing.T) {
 		done <- true
 	}()
 
-	rtm.IncomingEvents <- slack.RTMEvent{Data: &slack.MessageEvent{
+	a.events <- slack.RTMEvent{Data: &slack.MessageEvent{
 		Msg: slack.Msg{
 			Text: fmt.Sprintf("%s PING", a.userLink(a.userID)),
 		},
 	}}
 
-	close(rtm.IncomingEvents)
+	close(a.events)
 	<-done
 	brain.Finish()
 
@@ -141,25 +139,44 @@ func TestAdapter_MentionBotPrefix(t *testing.T) {
 	assert.Equal(t, expectedEvt, events[0])
 }
 
+func TestAdapter_Send(t *testing.T) {
+	a, slackAPI := newTestAdapter(t)
+	slackAPI.On("PostMessageContext", a.context, "C1H9RESGL",
+		mock.AnythingOfType("slack.MsgOption"), // the text
+		mock.AnythingOfType("slack.MsgOption"), // enable parsing
+	).Return("", "", nil)
+
+	err := a.Send("Hello World", "C1H9RESGL")
+	require.NoError(t, err)
+	slackAPI.AssertExpectations(t)
+}
+
 type mockSlack struct {
 	mock.Mock
 }
 
-func (a *mockSlack) AuthTestContext(ctx context.Context) (*slack.AuthTestResponse, error) {
-	args := a.Called(ctx)
+var _ slackAPI = new(mockSlack)
+
+func (m *mockSlack) AuthTestContext(ctx context.Context) (*slack.AuthTestResponse, error) {
+	args := m.Called(ctx)
 	return args.Get(0).(*slack.AuthTestResponse), args.Error(1)
 }
 
-func (a *mockSlack) NewRTM(opts ...slack.RTMOption) *slack.RTM {
-	callArgs := make([]interface{}, len(opts))
-	for i, opt := range opts {
-		callArgs[i] = opt
+func (m *mockSlack) PostMessageContext(ctx context.Context, channelID string, opts ...slack.MsgOption) (respChannel, respTimestamp string, err error) {
+	callArgs := []interface{}{ctx, channelID}
+	for _, o := range opts {
+		callArgs = append(callArgs, o)
 	}
-	args := a.Called(callArgs...)
-	return args.Get(0).(*slack.RTM)
+	args := m.Called(callArgs...)
+	return args.String(0), args.String(1), args.Error(2)
 }
 
-func (a *mockSlack) GetUserInfo(user string) (*slack.User, error) {
-	args := a.Called(user)
+func (m *mockSlack) GetUserInfo(user string) (*slack.User, error) {
+	args := m.Called(user)
 	return args.Get(0).(*slack.User), args.Error(1)
+}
+
+func (m *mockSlack) Disconnect() error {
+	args := m.Called()
+	return args.Error(0)
 }

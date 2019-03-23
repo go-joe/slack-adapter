@@ -16,19 +16,13 @@ This repository contains a module for the [Joe Bot library][joe].
 ## Getting Started
 
 Joe is packaged using the new [Go modules][go-modules]. Therefore the recommended
-installation is by adding joe and all used modules to your `go.mod` file like this: 
+installation method is to add the adapter to your `go.mod` via:
 
 ```
-module github.com/go-joe/example-bot
-
-require (
-	github.com/go-joe/joe v0.4.0
-	github.com/go-joe/slack-adapter v0.4.0
-	…
-)
+require github.com/go-joe/slack-adapter v0.4.0
 ```
 
-If you want to hack on the adapter you can of course also go get it directly:
+If you do not use modules yet or you want to hack on the code you can also go get it directly:
 
 ```bash
 go get github.com/go-joe/slack-adapter
