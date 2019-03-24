@@ -27,6 +27,7 @@ linters-settings:
       - opinionated
     disabled-checks:
       - unnamedResult
+      - hugeParam
 
 linters:
   enable-all: true

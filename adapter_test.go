@@ -8,6 +8,7 @@ import (
 	"github.com/go-joe/joe"
 	"github.com/go-joe/joe/joetest"
 	"github.com/nlopes/slack"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -17,7 +18,7 @@ import (
 // compile time test to check if we are implementing the interface.
 var _ joe.Adapter = new(BotAdapter)
 
-func newTestAdapter(t *testing.T) (*BotAdapter, *slack.RTM) {
+func newTestAdapter(t *testing.T) (*BotAdapter, *mockSlack) {
 	ctx := context.Background()
 	logger := zaptest.NewLogger(t)
 	client := new(mockSlack)
@@ -25,19 +26,17 @@ func newTestAdapter(t *testing.T) (*BotAdapter, *slack.RTM) {
 	authTestResp := &slack.AuthTestResponse{User: "test-bot", UserID: "42"}
 	client.On("AuthTestContext", ctx).Return(authTestResp, nil)
 
-	rtm := &slack.RTM{IncomingEvents: make(chan slack.RTMEvent)}
-	client.On("NewRTM").Return(rtm)
-
 	conf := Config{Logger: logger}
-	a, err := newAdapter(ctx, client, conf)
+	events := make(chan slack.RTMEvent)
+	a, err := newAdapter(ctx, client, events, conf)
 	require.NoError(t, err)
 
-	return a, rtm
+	return a, client
 }
 
 func TestAdapter_IgnoreNormalMessages(t *testing.T) {
 	brain := joetest.NewBrain(t)
-	a, rtm := newTestAdapter(t)
+	a, _ := newTestAdapter(t)
 
 	done := make(chan bool)
 	go func() {
@@ -45,14 +44,14 @@ func TestAdapter_IgnoreNormalMessages(t *testing.T) {
 		done <- true
 	}()
 
-	rtm.IncomingEvents <- slack.RTMEvent{Data: &slack.MessageEvent{
+	a.events <- slack.RTMEvent{Data: &slack.MessageEvent{
 		Msg: slack.Msg{
 			Text:    "Hello world",
 			Channel: "C1H9RESGL",
 		},
 	}}
 
-	close(rtm.IncomingEvents)
+	close(a.events)
 	<-done
 	brain.Finish()
 
@@ -61,7 +60,7 @@ func TestAdapter_IgnoreNormalMessages(t *testing.T) {
 
 func TestAdapter_DirectMessages(t *testing.T) {
 	brain := joetest.NewBrain(t)
-	a, rtm := newTestAdapter(t)
+	a, _ := newTestAdapter(t)
 
 	done := make(chan bool)
 	go func() {
@@ -69,14 +68,14 @@ func TestAdapter_DirectMessages(t *testing.T) {
 		done <- true
 	}()
 
-	rtm.IncomingEvents <- slack.RTMEvent{Data: &slack.MessageEvent{
+	a.events <- slack.RTMEvent{Data: &slack.MessageEvent{
 		Msg: slack.Msg{
 			Text:    "Hello world",
 			Channel: "D023BB3L2",
 		},
 	}}
 
-	close(rtm.IncomingEvents)
+	close(a.events)
 	<-done
 	brain.Finish()
 
@@ -88,7 +87,7 @@ func TestAdapter_DirectMessages(t *testing.T) {
 
 func TestAdapter_MentionBot(t *testing.T) {
 	brain := joetest.NewBrain(t)
-	a, rtm := newTestAdapter(t)
+	a, _ := newTestAdapter(t)
 
 	done := make(chan bool)
 	go func() {
@@ -98,14 +97,14 @@ func TestAdapter_MentionBot(t *testing.T) {
 
 	msg := fmt.Sprintf("Hey %s!", a.userLink(a.userID))
 	channel := "D023BB3L2"
-	rtm.IncomingEvents <- slack.RTMEvent{Data: &slack.MessageEvent{
+	a.events <- slack.RTMEvent{Data: &slack.MessageEvent{
 		Msg: slack.Msg{
 			Text:    msg,
 			Channel: channel,
 		},
 	}}
 
-	close(rtm.IncomingEvents)
+	close(a.events)
 	<-done
 	brain.Finish()
 
@@ -117,7 +116,7 @@ func TestAdapter_MentionBot(t *testing.T) {
 
 func TestAdapter_MentionBotPrefix(t *testing.T) {
 	brain := joetest.NewBrain(t)
-	a, rtm := newTestAdapter(t)
+	a, _ := newTestAdapter(t)
 
 	done := make(chan bool)
 	go func() {
@@ -125,13 +124,13 @@ func TestAdapter_MentionBotPrefix(t *testing.T) {
 		done <- true
 	}()
 
-	rtm.IncomingEvents <- slack.RTMEvent{Data: &slack.MessageEvent{
+	a.events <- slack.RTMEvent{Data: &slack.MessageEvent{
 		Msg: slack.Msg{
 			Text: fmt.Sprintf("%s PING", a.userLink(a.userID)),
 		},
 	}}
 
-	close(rtm.IncomingEvents)
+	close(a.events)
 	<-done
 	brain.Finish()
 
@@ -141,25 +140,159 @@ func TestAdapter_MentionBotPrefix(t *testing.T) {
 	assert.Equal(t, expectedEvt, events[0])
 }
 
+func TestAdapter_Send(t *testing.T) {
+	a, slackAPI := newTestAdapter(t)
+	slackAPI.On("PostMessageContext", a.context, "C1H9RESGL",
+		mock.AnythingOfType("slack.MsgOption"), // the text
+		mock.AnythingOfType("slack.MsgOption"), // enable parsing
+		mock.AnythingOfType("slack.MsgOption"), // user ID
+		mock.AnythingOfType("slack.MsgOption"), // user name
+	).Return("", "", nil)
+
+	err := a.Send("Hello World", "C1H9RESGL")
+	require.NoError(t, err)
+	slackAPI.AssertExpectations(t)
+}
+
+func TestAdapter_Close(t *testing.T) {
+	a, slackAPI := newTestAdapter(t)
+	slackAPI.On("Disconnect").Return(nil)
+
+	err := a.Close()
+	require.NoError(t, err)
+	slackAPI.AssertExpectations(t)
+}
+
+func TestAdapter_UserTypingEvent(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, slackAPI := newTestAdapter(t)
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	slackAPI.On("GetUserInfo", "UG96B2SGJ").Return(&slack.User{
+		ID:       "UG96B2SGJ",
+		Name:     "JD",
+		RealName: "John Doe",
+	}, nil)
+
+	a.events <- slack.RTMEvent{Data: &slack.UserTypingEvent{
+		User:    "UG96B2SGJ",
+		Channel: "C1H9RESGL",
+	}}
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	events := brain.RecordedEvents()
+	require.NotEmpty(t, events)
+
+	expectedUser := joe.User{ID: "UG96B2SGJ", Name: "JD", RealName: "John Doe"}
+	expectedEvt := joe.UserTypingEvent{User: expectedUser, Channel: "C1H9RESGL"}
+	assert.Equal(t, expectedEvt, events[0])
+}
+
+func TestAdapter_UserTypingCache(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, slackAPI := newTestAdapter(t)
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	slackAPI.On("GetUserInfo", "UG96B2SGJ").Return(&slack.User{
+		ID:       "UG96B2SGJ",
+		Name:     "JD",
+		RealName: "John Doe",
+	}, nil).Once()
+
+	evt := slack.RTMEvent{Data: &slack.UserTypingEvent{
+		User:    "UG96B2SGJ",
+		Channel: "C1H9RESGL",
+	}}
+
+	a.events <- evt
+	a.events <- evt
+	a.events <- evt
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	events := brain.RecordedEvents()
+	require.NotEmpty(t, events)
+
+	expectedUser := joe.User{ID: "UG96B2SGJ", Name: "JD", RealName: "John Doe"}
+	expectedEvt := joe.UserTypingEvent{User: expectedUser, Channel: "C1H9RESGL"}
+	assert.Equal(t, expectedEvt, events[0])
+}
+
+func TestAdapter_UserTypingEventError(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, slackAPI := newTestAdapter(t)
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	slackAPI.On("GetUserInfo", "UG96B2SGJ").Return(nil, errors.New("something went wrong"))
+
+	a.events <- slack.RTMEvent{Data: &slack.UserTypingEvent{
+		User:    "UG96B2SGJ",
+		Channel: "C1H9RESGL",
+	}}
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	events := brain.RecordedEvents()
+	require.NotEmpty(t, events)
+
+	expectedUser := joe.User{ID: "UG96B2SGJ"}
+	expectedEvt := joe.UserTypingEvent{User: expectedUser, Channel: "C1H9RESGL"}
+	assert.Equal(t, expectedEvt, events[0])
+}
+
 type mockSlack struct {
 	mock.Mock
 }
 
-func (a *mockSlack) AuthTestContext(ctx context.Context) (*slack.AuthTestResponse, error) {
-	args := a.Called(ctx)
+var _ slackAPI = new(mockSlack)
+
+func (m *mockSlack) AuthTestContext(ctx context.Context) (*slack.AuthTestResponse, error) {
+	args := m.Called(ctx)
 	return args.Get(0).(*slack.AuthTestResponse), args.Error(1)
 }
 
-func (a *mockSlack) NewRTM(opts ...slack.RTMOption) *slack.RTM {
-	callArgs := make([]interface{}, len(opts))
-	for i, opt := range opts {
-		callArgs[i] = opt
+func (m *mockSlack) PostMessageContext(ctx context.Context, channelID string,
+	opts ...slack.MsgOption) (respChannel, respTimestamp string, err error) {
+	callArgs := []interface{}{ctx, channelID}
+	for _, o := range opts {
+		callArgs = append(callArgs, o)
 	}
-	args := a.Called(callArgs...)
-	return args.Get(0).(*slack.RTM)
+	args := m.Called(callArgs...)
+	return args.String(0), args.String(1), args.Error(2)
 }
 
-func (a *mockSlack) GetUserInfo(user string) (*slack.User, error) {
-	args := a.Called(user)
-	return args.Get(0).(*slack.User), args.Error(1)
+func (m *mockSlack) GetUserInfo(user string) (usr *slack.User, err error) {
+	args := m.Called(user)
+	if x := args.Get(0); x != nil {
+		usr = x.(*slack.User)
+	}
+
+	return usr, args.Error(1)
+}
+
+func (m *mockSlack) Disconnect() error {
+	args := m.Called()
+	return args.Error(0)
 }

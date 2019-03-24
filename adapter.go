@@ -17,9 +17,13 @@ import (
 type BotAdapter struct {
 	context context.Context
 	logger  *zap.Logger
-	client  slackAPI
-	rtm     *slack.RTM
+	name    string
 	userID  string
+
+	sendMsgParams slack.PostMessageParameters
+
+	slack  slackAPI
+	events chan slack.RTMEvent
 
 	usersMu sync.RWMutex
 	users   map[string]joe.User
@@ -28,29 +32,28 @@ type BotAdapter struct {
 // Config contains the configuration of a BotAdapter.
 type Config struct {
 	Token  string
+	Name   string
 	Debug  bool
 	Logger *zap.Logger
+
+	// SendMsgParams contains settings that are applied to all messages sent
+	// by the BotAdapter.
+	SendMsgParams slack.PostMessageParameters
 }
 
 type slackAPI interface {
 	AuthTestContext(context.Context) (*slack.AuthTestResponse, error)
-	NewRTM(...slack.RTMOption) *slack.RTM
+	PostMessageContext(ctx context.Context, channelID string, opts ...slack.MsgOption) (respChannel, respTimestamp string, err error)
 	GetUserInfo(user string) (*slack.User, error)
+	Disconnect() error
 }
 
 // Adapter returns a new slack Adapter as joe.Module.
 func Adapter(token string, opts ...Option) joe.Module {
 	return joe.ModuleFunc(func(joeConf *joe.Config) error {
-		conf := Config{Token: token}
-		for _, opt := range opts {
-			err := opt(&conf)
-			if err != nil {
-				return err
-			}
-		}
-
-		if conf.Logger == nil {
-			conf.Logger = joeConf.Logger("slack")
+		conf, err := newConf(token, joeConf, opts)
+		if err != nil {
+			return err
 		}
 
 		a, err := NewAdapter(joeConf.Context, conf)
@@ -63,33 +66,66 @@ func Adapter(token string, opts ...Option) joe.Module {
 	})
 }
 
-// NewAdapter creates a new slack adapter. Note that you will usually configure
-// the slack adapter as joe.Module (i.e. using the "slack.Adapter(…)" function.
-func NewAdapter(ctx context.Context, conf Config) (*BotAdapter, error) {
-	client := slack.New(conf.Token, slack.OptionDebug(conf.Debug)) // TODO: logger option?
-	return newAdapter(ctx, client, conf)
+func newConf(token string, joeConf *joe.Config, opts []Option) (Config, error) {
+	conf := Config{Token: token, Name: joeConf.Name}
+	conf.SendMsgParams = slack.PostMessageParameters{
+		LinkNames: 1,
+		Parse:     "full",
+	}
+
+	for _, opt := range opts {
+		err := opt(&conf)
+		if err != nil {
+			return conf, err
+		}
+	}
+
+	if conf.Logger == nil {
+		conf.Logger = joeConf.Logger("slack")
+	}
+
+	return conf, nil
 }
 
-func newAdapter(ctx context.Context, client slackAPI, conf Config) (*BotAdapter, error) {
+// NewAdapter creates a new *BotAdapter that connects to Slack. Note that you
+// will usually configure the slack adapter as joe.Module (i.e. using the
+// Adapter function of this package).
+func NewAdapter(ctx context.Context, conf Config) (*BotAdapter, error) {
+	var slackClient struct {
+		*slack.Client
+		*slack.RTM
+	}
+
+	slackClient.Client = slack.New(conf.Token, slack.OptionDebug(conf.Debug)) // TODO: logger option?
+	slackClient.RTM = slackClient.Client.NewRTM()
+
+	// Start managing the slack Real Time Messaging (RTM) connection.
+	// This goroutine is closed when the BotAdapter disconnects from slack in
+	// BotAdapter.Close()
+	go slackClient.RTM.ManageConnection()
+	return newAdapter(ctx, slackClient, slackClient.RTM.IncomingEvents, conf)
+}
+
+func newAdapter(ctx context.Context, client slackAPI, events chan slack.RTMEvent, conf Config) (*BotAdapter, error) {
 	a := &BotAdapter{
-		client:  client,
-		context: ctx,
-		logger:  conf.Logger,
-		users:   map[string]joe.User{}, // TODO: cache expiration?
+		slack:         client,
+		events:        events,
+		context:       ctx,
+		logger:        conf.Logger,
+		sendMsgParams: conf.SendMsgParams,
+		users:         map[string]joe.User{}, // TODO: cache expiration?
 	}
 
 	if a.logger == nil {
 		a.logger = zap.NewNop()
 	}
 
-	resp, err := a.client.AuthTestContext(ctx)
+	resp, err := client.AuthTestContext(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "slack auth test failed")
 	}
 
 	a.userID = resp.UserID
-	a.rtm = a.client.NewRTM()
-
 	a.logger.Info("Connected to slack API",
 		zap.String("url", resp.URL),
 		zap.String("user", resp.User),
@@ -104,17 +140,12 @@ func newAdapter(ctx context.Context, client slackAPI, conf Config) (*BotAdapter,
 // RegisterAt implements the joe.Adapter interface by emitting the slack API
 // events to the given brain.
 func (a *BotAdapter) RegisterAt(brain *joe.Brain) {
-	// Start message handling in two goroutines. They will be closed when we
-	// disconnect the RTM upon adapter.Close().
-	go a.rtm.ManageConnection()
 	go a.handleSlackEvents(brain)
 }
 
 func (a *BotAdapter) handleSlackEvents(brain *joe.Brain) {
-	for msg := range a.rtm.IncomingEvents {
+	for msg := range a.events {
 		switch ev := msg.Data.(type) {
-		case *slack.HelloEvent:
-			// Ignore hello
 
 		case *slack.MessageEvent:
 			a.handleMessageEvent(ev, brain)
@@ -164,11 +195,12 @@ func (a *BotAdapter) userByID(userID string) joe.User {
 		return user
 	}
 
-	resp, err := a.client.GetUserInfo(userID)
+	resp, err := a.slack.GetUserInfo(userID)
 	if err != nil {
 		a.logger.Error("Failed to get user info by ID",
 			zap.String("user_id", userID),
 		)
+		return joe.User{ID: userID}
 	}
 
 	user = joe.User{
@@ -192,13 +224,19 @@ func (a *BotAdapter) Send(text, channelID string) error {
 		// do not leak actual message content since it might be sensitive
 	)
 
-	a.rtm.SendMessage(a.rtm.NewOutgoingMessage(text, channelID))
-	return nil
+	_, _, err := a.slack.PostMessageContext(a.context, channelID,
+		slack.MsgOptionText(text, false),
+		slack.MsgOptionPostMessageParameters(a.sendMsgParams),
+		slack.MsgOptionUser(a.userID),
+		slack.MsgOptionUsername(a.name),
+	)
+
+	return err
 }
 
 // Close disconnects the adapter from the slack API.
 func (a *BotAdapter) Close() error {
-	return a.rtm.Disconnect()
+	return a.slack.Disconnect()
 }
 
 // As long as github.com/nlopes/slack does not support the "link_names=1"
