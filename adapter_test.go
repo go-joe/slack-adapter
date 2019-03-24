@@ -8,6 +8,7 @@ import (
 	"github.com/go-joe/joe"
 	"github.com/go-joe/joe/joetest"
 	"github.com/nlopes/slack"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -153,6 +154,114 @@ func TestAdapter_Send(t *testing.T) {
 	slackAPI.AssertExpectations(t)
 }
 
+func TestAdapter_Close(t *testing.T) {
+	a, slackAPI := newTestAdapter(t)
+	slackAPI.On("Disconnect").Return(nil)
+
+	err := a.Close()
+	require.NoError(t, err)
+	slackAPI.AssertExpectations(t)
+}
+
+func TestAdapter_UserTypingEvent(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, slackAPI := newTestAdapter(t)
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	slackAPI.On("GetUserInfo", "UG96B2SGJ").Return(&slack.User{
+		ID:       "UG96B2SGJ",
+		Name:     "JD",
+		RealName: "John Doe",
+	}, nil)
+
+	a.events <- slack.RTMEvent{Data: &slack.UserTypingEvent{
+		User:    "UG96B2SGJ",
+		Channel: "C1H9RESGL",
+	}}
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	events := brain.RecordedEvents()
+	require.NotEmpty(t, events)
+
+	expectedUser := joe.User{ID: "UG96B2SGJ", Name: "JD", RealName: "John Doe"}
+	expectedEvt := joe.UserTypingEvent{User: expectedUser, Channel: "C1H9RESGL"}
+	assert.Equal(t, expectedEvt, events[0])
+}
+
+func TestAdapter_UserTypingCache(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, slackAPI := newTestAdapter(t)
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	slackAPI.On("GetUserInfo", "UG96B2SGJ").Return(&slack.User{
+		ID:       "UG96B2SGJ",
+		Name:     "JD",
+		RealName: "John Doe",
+	}, nil).Once()
+
+	evt := slack.RTMEvent{Data: &slack.UserTypingEvent{
+		User:    "UG96B2SGJ",
+		Channel: "C1H9RESGL",
+	}}
+
+	a.events <- evt
+	a.events <- evt
+	a.events <- evt
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	events := brain.RecordedEvents()
+	require.NotEmpty(t, events)
+
+	expectedUser := joe.User{ID: "UG96B2SGJ", Name: "JD", RealName: "John Doe"}
+	expectedEvt := joe.UserTypingEvent{User: expectedUser, Channel: "C1H9RESGL"}
+	assert.Equal(t, expectedEvt, events[0])
+}
+
+func TestAdapter_UserTypingEventError(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, slackAPI := newTestAdapter(t)
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	slackAPI.On("GetUserInfo", "UG96B2SGJ").Return(nil, errors.New("something went wrong"))
+
+	a.events <- slack.RTMEvent{Data: &slack.UserTypingEvent{
+		User:    "UG96B2SGJ",
+		Channel: "C1H9RESGL",
+	}}
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	events := brain.RecordedEvents()
+	require.NotEmpty(t, events)
+
+	expectedUser := joe.User{ID: "UG96B2SGJ"}
+	expectedEvt := joe.UserTypingEvent{User: expectedUser, Channel: "C1H9RESGL"}
+	assert.Equal(t, expectedEvt, events[0])
+}
+
 type mockSlack struct {
 	mock.Mock
 }
@@ -174,9 +283,13 @@ func (m *mockSlack) PostMessageContext(ctx context.Context, channelID string,
 	return args.String(0), args.String(1), args.Error(2)
 }
 
-func (m *mockSlack) GetUserInfo(user string) (*slack.User, error) {
+func (m *mockSlack) GetUserInfo(user string) (usr *slack.User, err error) {
 	args := m.Called(user)
-	return args.Get(0).(*slack.User), args.Error(1)
+	if x := args.Get(0); x != nil {
+		usr = x.(*slack.User)
+	}
+
+	return usr, args.Error(1)
 }
 
 func (m *mockSlack) Disconnect() error {

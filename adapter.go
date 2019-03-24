@@ -51,21 +51,9 @@ type slackAPI interface {
 // Adapter returns a new slack Adapter as joe.Module.
 func Adapter(token string, opts ...Option) joe.Module {
 	return joe.ModuleFunc(func(joeConf *joe.Config) error {
-		conf := Config{Token: token, Name: joeConf.Name}
-		conf.SendMsgParams = slack.PostMessageParameters{
-			LinkNames: 1,
-			Parse:     "full",
-		}
-
-		for _, opt := range opts {
-			err := opt(&conf)
-			if err != nil {
-				return err
-			}
-		}
-
-		if conf.Logger == nil {
-			conf.Logger = joeConf.Logger("slack")
+		conf, err := newConf(token, joeConf, opts)
+		if err != nil {
+			return err
 		}
 
 		a, err := NewAdapter(joeConf.Context, conf)
@@ -76,6 +64,27 @@ func Adapter(token string, opts ...Option) joe.Module {
 		joeConf.SetAdapter(a)
 		return nil
 	})
+}
+
+func newConf(token string, joeConf *joe.Config, opts []Option) (Config, error) {
+	conf := Config{Token: token, Name: joeConf.Name}
+	conf.SendMsgParams = slack.PostMessageParameters{
+		LinkNames: 1,
+		Parse:     "full",
+	}
+
+	for _, opt := range opts {
+		err := opt(&conf)
+		if err != nil {
+			return conf, err
+		}
+	}
+
+	if conf.Logger == nil {
+		conf.Logger = joeConf.Logger("slack")
+	}
+
+	return conf, nil
 }
 
 // NewAdapter creates a new *BotAdapter that connects to Slack. Note that you
@@ -137,8 +146,6 @@ func (a *BotAdapter) RegisterAt(brain *joe.Brain) {
 func (a *BotAdapter) handleSlackEvents(brain *joe.Brain) {
 	for msg := range a.events {
 		switch ev := msg.Data.(type) {
-		case *slack.HelloEvent:
-			// Ignore hello
 
 		case *slack.MessageEvent:
 			a.handleMessageEvent(ev, brain)
@@ -193,6 +200,7 @@ func (a *BotAdapter) userByID(userID string) joe.User {
 		a.logger.Error("Failed to get user info by ID",
 			zap.String("user_id", userID),
 		)
+		return joe.User{ID: userID}
 	}
 
 	user = joe.User{
