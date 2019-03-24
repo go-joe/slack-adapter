@@ -17,7 +17,10 @@ import (
 type BotAdapter struct {
 	context context.Context
 	logger  *zap.Logger
+	name    string
 	userID  string
+
+	sendMsgParams slack.PostMessageParameters
 
 	slack  slackAPI
 	events chan slack.RTMEvent
@@ -29,8 +32,13 @@ type BotAdapter struct {
 // Config contains the configuration of a BotAdapter.
 type Config struct {
 	Token  string
+	Name   string
 	Debug  bool
 	Logger *zap.Logger
+
+	// SendMsgParams contains settings that are applied to all messages sent
+	// by the BotAdapter.
+	SendMsgParams slack.PostMessageParameters
 }
 
 type slackAPI interface {
@@ -43,7 +51,12 @@ type slackAPI interface {
 // Adapter returns a new slack Adapter as joe.Module.
 func Adapter(token string, opts ...Option) joe.Module {
 	return joe.ModuleFunc(func(joeConf *joe.Config) error {
-		conf := Config{Token: token}
+		conf := Config{Token: token, Name: joeConf.Name}
+		conf.SendMsgParams = slack.PostMessageParameters{
+			LinkNames: 1,
+			Parse:     "full",
+		}
+
 		for _, opt := range opts {
 			err := opt(&conf)
 			if err != nil {
@@ -65,8 +78,9 @@ func Adapter(token string, opts ...Option) joe.Module {
 	})
 }
 
-// NewAdapter creates a new slack adapter. Note that you will usually configure
-// the slack adapter as joe.Module (i.e. using the "slack.Adapter(…)" function.
+// NewAdapter creates a new *BotAdapter that connects to Slack. Note that you
+// will usually configure the slack adapter as joe.Module (i.e. using the
+// Adapter function of this package).
 func NewAdapter(ctx context.Context, conf Config) (*BotAdapter, error) {
 	var slackClient struct {
 		*slack.Client
@@ -85,11 +99,12 @@ func NewAdapter(ctx context.Context, conf Config) (*BotAdapter, error) {
 
 func newAdapter(ctx context.Context, client slackAPI, events chan slack.RTMEvent, conf Config) (*BotAdapter, error) {
 	a := &BotAdapter{
-		slack:   client,
-		events:  events,
-		context: ctx,
-		logger:  conf.Logger,
-		users:   map[string]joe.User{}, // TODO: cache expiration?
+		slack:         client,
+		events:        events,
+		context:       ctx,
+		logger:        conf.Logger,
+		sendMsgParams: conf.SendMsgParams,
+		users:         map[string]joe.User{}, // TODO: cache expiration?
 	}
 
 	if a.logger == nil {
@@ -203,7 +218,9 @@ func (a *BotAdapter) Send(text, channelID string) error {
 
 	_, _, err := a.slack.PostMessageContext(a.context, channelID,
 		slack.MsgOptionText(text, false),
-		slack.MsgOptionParse(true),
+		slack.MsgOptionPostMessageParameters(a.sendMsgParams),
+		slack.MsgOptionUser(a.userID),
+		slack.MsgOptionUsername(a.name),
 	)
 
 	return err

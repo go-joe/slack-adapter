@@ -144,6 +144,8 @@ func TestAdapter_Send(t *testing.T) {
 	slackAPI.On("PostMessageContext", a.context, "C1H9RESGL",
 		mock.AnythingOfType("slack.MsgOption"), // the text
 		mock.AnythingOfType("slack.MsgOption"), // enable parsing
+		mock.AnythingOfType("slack.MsgOption"), // user ID
+		mock.AnythingOfType("slack.MsgOption"), // user name
 	).Return("", "", nil)
 
 	err := a.Send("Hello World", "C1H9RESGL")
@@ -162,7 +164,8 @@ func (m *mockSlack) AuthTestContext(ctx context.Context) (*slack.AuthTestRespons
 	return args.Get(0).(*slack.AuthTestResponse), args.Error(1)
 }
 
-func (m *mockSlack) PostMessageContext(ctx context.Context, channelID string, opts ...slack.MsgOption) (respChannel, respTimestamp string, err error) {
+func (m *mockSlack) PostMessageContext(ctx context.Context, channelID string,
+	opts ...slack.MsgOption) (respChannel, respTimestamp string, err error) {
 	callArgs := []interface{}{ctx, channelID}
 	for _, o := range opts {
 		callArgs = append(callArgs, o)
