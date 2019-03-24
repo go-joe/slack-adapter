@@ -19,7 +19,7 @@ Joe is packaged using the new [Go modules][go-modules]. Therefore the recommende
 installation method is to add the adapter to your `go.mod` via:
 
 ```
-require github.com/go-joe/slack-adapter v0.4.0
+require github.com/go-joe/slack-adapter v0.5.0
 ```
 
 If you do not use modules yet or you want to hack on the code you can also go get it directly:
