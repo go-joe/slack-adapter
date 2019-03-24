@@ -15,9 +15,6 @@ with the project.
 4. Update the [CHANGELOG.md](CHANGELOG.md) with the changes you made (in the "Unreleased" section) 
 5. Consider updating the [README.md](README.md) with details of your changes.
    When in doubt, lets discuss the need together in the corresponding Github issue.
-6. Consider if you have to increase the version numbers in any examples files and
-   the README.md to the new version that this Pull Request would represent.
-   The versioning scheme we use is [SemVer](http://semver.org/).
 
 ## Code of Conduct
 
