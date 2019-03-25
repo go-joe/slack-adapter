@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 Nothing so far
 
+## [v0.5.1] - 2019-03-25
+- Fix missing avatar and bot name when sending messages
+
 ## [v0.5.0] - 2019-03-24
 - Automatically parse all sent messages (e.g. allow `@someone` or `#channel`)
 
@@ -32,7 +35,8 @@ Nothing so far
 
 Initial alpha release
 
-[Unreleased]: https://github.com/go-joe/slack-adapter/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/go-joe/slack-adapter/compare/v0.5.1...HEAD
+[v0.5.1]: https://github.com/go-joe/slack-adapter/compare/v0.5.0...v0.5.1
 [v0.5.0]: https://github.com/go-joe/slack-adapter/compare/v0.4.0...v0.5.0
 [v0.4.0]: https://github.com/go-joe/slack-adapter/compare/v0.3.0...v0.4.0
 [v0.3.0]: https://github.com/go-joe/slack-adapter/compare/v0.2.0...v0.3.0

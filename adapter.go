@@ -71,6 +71,7 @@ func newConf(token string, joeConf *joe.Config, opts []Option) (Config, error) {
 	conf.SendMsgParams = slack.PostMessageParameters{
 		LinkNames: 1,
 		Parse:     "full",
+		AsUser:    true,
 	}
 
 	for _, opt := range opts {
