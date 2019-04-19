@@ -5,7 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-Nothing so far
+- Update to joe v0.7.0
+- Set the ReceiveMessageEvent.Data field
+- Set the ReceiveMessageEvent.AuthorID field to the github.com/nlopes/slack.MessageEvent
 
 ## [v0.5.1] - 2019-03-25
 - Fix missing avatar and bot name when sending messages

@@ -68,12 +68,14 @@ func TestAdapter_DirectMessages(t *testing.T) {
 		done <- true
 	}()
 
-	a.events <- slack.RTMEvent{Data: &slack.MessageEvent{
+	evt := &slack.MessageEvent{
 		Msg: slack.Msg{
 			Text:    "Hello world",
 			Channel: "D023BB3L2",
 		},
-	}}
+	}
+
+	a.events <- slack.RTMEvent{Data: evt}
 
 	close(a.events)
 	<-done
@@ -81,7 +83,7 @@ func TestAdapter_DirectMessages(t *testing.T) {
 
 	events := brain.RecordedEvents()
 	require.NotEmpty(t, events)
-	expectedEvt := joe.ReceiveMessageEvent{Text: "Hello world", Channel: "D023BB3L2"}
+	expectedEvt := joe.ReceiveMessageEvent{Text: "Hello world", Channel: "D023BB3L2", Data: evt}
 	assert.Equal(t, expectedEvt, events[0])
 }
 
@@ -95,14 +97,15 @@ func TestAdapter_MentionBot(t *testing.T) {
 		done <- true
 	}()
 
-	msg := fmt.Sprintf("Hey %s!", a.userLink(a.userID))
-	channel := "D023BB3L2"
-	a.events <- slack.RTMEvent{Data: &slack.MessageEvent{
+	evt := &slack.MessageEvent{
 		Msg: slack.Msg{
-			Text:    msg,
-			Channel: channel,
+			Text:    fmt.Sprintf("Hey %s!", a.userLink(a.userID)),
+			Channel: "D023BB3L2",
+			User:    "test",
 		},
-	}}
+	}
+
+	a.events <- slack.RTMEvent{Data: evt}
 
 	close(a.events)
 	<-done
@@ -110,7 +113,7 @@ func TestAdapter_MentionBot(t *testing.T) {
 
 	events := brain.RecordedEvents()
 	require.NotEmpty(t, events)
-	expectedEvt := joe.ReceiveMessageEvent{Text: msg, Channel: channel}
+	expectedEvt := joe.ReceiveMessageEvent{Text: evt.Text, Channel: evt.Channel, AuthorID: evt.User, Data: evt}
 	assert.Equal(t, expectedEvt, events[0])
 }
 
@@ -124,11 +127,13 @@ func TestAdapter_MentionBotPrefix(t *testing.T) {
 		done <- true
 	}()
 
-	a.events <- slack.RTMEvent{Data: &slack.MessageEvent{
+	evt := &slack.MessageEvent{
 		Msg: slack.Msg{
 			Text: fmt.Sprintf("%s PING", a.userLink(a.userID)),
 		},
-	}}
+	}
+
+	a.events <- slack.RTMEvent{Data: evt}
 
 	close(a.events)
 	<-done
@@ -136,7 +141,7 @@ func TestAdapter_MentionBotPrefix(t *testing.T) {
 
 	events := brain.RecordedEvents()
 	require.NotEmpty(t, events)
-	expectedEvt := joe.ReceiveMessageEvent{Text: "PING"}
+	expectedEvt := joe.ReceiveMessageEvent{Text: "PING", Data: evt}
 	assert.Equal(t, expectedEvt, events[0])
 }
 
