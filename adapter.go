@@ -1,3 +1,4 @@
+// Package slack implements a slack adapter for the joe bot library.
 package slack
 
 import (
@@ -49,6 +50,10 @@ type slackAPI interface {
 }
 
 // Adapter returns a new slack Adapter as joe.Module.
+//
+// Apart from the typical joe.ReceiveMessageEvent event, this adapter also emits
+// the joe.UserTypingEvent. The ReceiveMessageEvent.Data field is always a
+// pointer to the corresponding github.com/nlopes/slack.MessageEvent instance.
 func Adapter(token string, opts ...Option) joe.Module {
 	return joe.ModuleFunc(func(joeConf *joe.Config) error {
 		conf, err := newConf(token, joeConf, opts)
@@ -168,7 +173,6 @@ func (a *BotAdapter) handleSlackEvents(brain *joe.Brain) {
 			// Ignore other events..
 		}
 	}
-
 }
 
 func (a *BotAdapter) handleMessageEvent(ev *slack.MessageEvent, brain *joe.Brain) {
@@ -182,8 +186,10 @@ func (a *BotAdapter) handleMessageEvent(ev *slack.MessageEvent, brain *joe.Brain
 
 	text := strings.TrimSpace(strings.TrimPrefix(ev.Text, selfLink))
 	brain.Emit(joe.ReceiveMessageEvent{
-		Text:    text,
-		Channel: ev.Channel,
+		Text:     text,
+		Channel:  ev.Channel,
+		AuthorID: ev.User,
+		Data:     ev,
 	})
 }
 
