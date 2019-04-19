@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+Nothing so far
+
+## [v0.6.0] - 2019-04-19
 - Update to joe v0.7.0
 - Set the ReceiveMessageEvent.AuthorID field
 - Set the ReceiveMessageEvent.Data field to the github.com/nlopes/slack.MessageEvent
@@ -37,7 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial alpha release
 
-[Unreleased]: https://github.com/go-joe/slack-adapter/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/go-joe/slack-adapter/compare/v0.6.0...HEAD
+[v0.6.0]: https://github.com/go-joe/slack-adapter/compare/v0.5.1...v0.6.0
 [v0.5.1]: https://github.com/go-joe/slack-adapter/compare/v0.5.0...v0.5.1
 [v0.5.0]: https://github.com/go-joe/slack-adapter/compare/v0.4.0...v0.5.0
 [v0.4.0]: https://github.com/go-joe/slack-adapter/compare/v0.3.0...v0.4.0
