@@ -176,6 +176,12 @@ func (a *BotAdapter) handleSlackEvents(brain *joe.Brain) {
 }
 
 func (a *BotAdapter) handleMessageEvent(ev *slack.MessageEvent, brain *joe.Brain) {
+	// check if the message comes from ourselves
+	if ev.User == a.userID {
+		// msg is from us, ignore it!
+		return
+	}
+
 	// check if we have a DM, or standard channel post
 	selfLink := a.userLink(a.userID)
 	direct := strings.HasPrefix(ev.Msg.Channel, "D")
