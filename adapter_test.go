@@ -15,20 +15,15 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
-var (
-	// compile time test to check if we are implementing the interface.
-	_ joe.Adapter = new(BotAdapter)
-
-	botUser   = "test-bot"
-	botUserID = "42"
-)
+// compile time test to check if we are implementing the interface.
+var _ joe.Adapter = new(BotAdapter)
 
 func newTestAdapter(t *testing.T) (*BotAdapter, *mockSlack) {
 	ctx := context.Background()
 	logger := zaptest.NewLogger(t)
 	client := new(mockSlack)
 
-	authTestResp := &slack.AuthTestResponse{User: botUser, UserID: botUserID}
+	authTestResp := &slack.AuthTestResponse{User: "test-bot", UserID: "42"}
 	client.On("AuthTestContext", ctx).Return(authTestResp, nil)
 
 	conf := Config{Logger: logger}
@@ -77,7 +72,7 @@ func TestAdapter_IgnoreChannelOwnMessages(t *testing.T) {
 		Msg: slack.Msg{
 			Text:    "Hello world",
 			Channel: "C1H9RESGL",
-			User:    botUserID,
+			User:    "42",
 		},
 	}
 
@@ -133,7 +128,7 @@ func TestAdapter_IgnoreDirectOwnMessages(t *testing.T) {
 		Msg: slack.Msg{
 			Text:    "Hello world",
 			Channel: "D023BB3L2",
-			User:    botUserID,
+			User:    "42",
 		},
 	}
 
