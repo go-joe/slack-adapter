@@ -63,6 +63,33 @@ func TestAdapter_IgnoreNormalMessages(t *testing.T) {
 	assert.Empty(t, brain.RecordedEvents())
 }
 
+func TestAdapter_IgnoreChannelOwnMessages(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, _ := newTestAdapter(t)
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	evt := &slack.MessageEvent{
+		Msg: slack.Msg{
+			Text:    "Hello world",
+			Channel: "C1H9RESGL",
+			User:    botUserID,
+		},
+	}
+
+	a.events <- slack.RTMEvent{Data: evt}
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	assert.Empty(t, brain.RecordedEvents())
+}
+
 func TestAdapter_DirectMessages(t *testing.T) {
 	brain := joetest.NewBrain(t)
 	a, _ := newTestAdapter(t)
