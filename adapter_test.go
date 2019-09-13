@@ -15,15 +15,20 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
-// compile time test to check if we are implementing the interface.
-var _ joe.Adapter = new(BotAdapter)
+var (
+	// compile time test to check if we are implementing the interface.
+	_ joe.Adapter = new(BotAdapter)
+
+	botUser   = "test-bot"
+	botUserID = "42"
+)
 
 func newTestAdapter(t *testing.T) (*BotAdapter, *mockSlack) {
 	ctx := context.Background()
 	logger := zaptest.NewLogger(t)
 	client := new(mockSlack)
 
-	authTestResp := &slack.AuthTestResponse{User: "test-bot", UserID: "42"}
+	authTestResp := &slack.AuthTestResponse{User: botUser, UserID: botUserID}
 	client.On("AuthTestContext", ctx).Return(authTestResp, nil)
 
 	conf := Config{Logger: logger}
@@ -85,6 +90,33 @@ func TestAdapter_DirectMessages(t *testing.T) {
 	require.NotEmpty(t, events)
 	expectedEvt := joe.ReceiveMessageEvent{Text: "Hello world", Channel: "D023BB3L2", Data: evt}
 	assert.Equal(t, expectedEvt, events[0])
+}
+
+func TestAdapter_IgnoreDirectOwnMessages(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, _ := newTestAdapter(t)
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	evt := &slack.MessageEvent{
+		Msg: slack.Msg{
+			Text:    "Hello world",
+			Channel: "D023BB3L2",
+			User:    botUserID,
+		},
+	}
+
+	a.events <- slack.RTMEvent{Data: evt}
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	assert.Empty(t, brain.RecordedEvents())
 }
 
 func TestAdapter_MentionBot(t *testing.T) {
