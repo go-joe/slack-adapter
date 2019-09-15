@@ -118,6 +118,7 @@ func newAdapter(ctx context.Context, client slackAPI, events chan slack.RTMEvent
 		events:        events,
 		context:       ctx,
 		logger:        conf.Logger,
+		name:          conf.Name,
 		sendMsgParams: conf.SendMsgParams,
 		users:         map[string]joe.User{}, // TODO: cache expiration?
 	}
