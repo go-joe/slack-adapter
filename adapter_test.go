@@ -3,6 +3,9 @@ package slack
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/go-joe/joe"
@@ -32,6 +35,20 @@ func newTestAdapter(t *testing.T) (*BotAdapter, *mockSlack) {
 	require.NoError(t, err)
 
 	return a, client
+}
+
+func TestNewAdapter_Name(t *testing.T) {
+	ctx := context.Background()
+	client := new(mockSlack)
+
+	authTestResp := &slack.AuthTestResponse{UserID: "42"}
+	client.On("AuthTestContext", ctx).Return(authTestResp, nil)
+
+	conf := Config{Name: "Test"}
+	a, err := newAdapter(ctx, client, nil, conf)
+	require.NoError(t, err)
+	assert.Equal(t, "Test", a.name)
+	assert.NotNil(t, a.logger)
 }
 
 func TestAdapter_IgnoreNormalMessages(t *testing.T) {
@@ -147,11 +164,22 @@ func TestAdapter_MentionBotPrefix(t *testing.T) {
 
 func TestAdapter_Send(t *testing.T) {
 	a, slackAPI := newTestAdapter(t)
+
+	matchOption := func(expectedName string) interface{} {
+		return mock.MatchedBy(func(actual slack.MsgOption) bool {
+			pc := reflect.ValueOf(actual).Pointer()
+			name := runtime.FuncForPC(pc).Name()
+			name = strings.TrimPrefix(name, "github.com/nlopes/")
+			name = strings.TrimSuffix(name, ".func1")
+			return assert.Equal(t, expectedName, name)
+		})
+	}
+
 	slackAPI.On("PostMessageContext", a.context, "C1H9RESGL",
-		mock.AnythingOfType("slack.MsgOption"), // the text
-		mock.AnythingOfType("slack.MsgOption"), // enable parsing
-		mock.AnythingOfType("slack.MsgOption"), // user ID
-		mock.AnythingOfType("slack.MsgOption"), // user name
+		matchOption("slack.MsgOptionText"),
+		matchOption("slack.MsgOptionPostMessageParameters"),
+		matchOption("slack.MsgOptionUser"),
+		matchOption("slack.MsgOptionUsername"),
 	).Return("", "", nil)
 
 	err := a.Send("Hello World", "C1H9RESGL")
