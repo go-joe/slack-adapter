@@ -58,33 +58,6 @@ func TestAdapter_IgnoreNormalMessages(t *testing.T) {
 	assert.Empty(t, brain.RecordedEvents())
 }
 
-func TestAdapter_IgnoreChannelOwnMessages(t *testing.T) {
-	brain := joetest.NewBrain(t)
-	a, _ := newTestAdapter(t)
-
-	done := make(chan bool)
-	go func() {
-		a.handleSlackEvents(brain.Brain)
-		done <- true
-	}()
-
-	evt := &slack.MessageEvent{
-		Msg: slack.Msg{
-			Text:    "Hello world",
-			Channel: "C1H9RESGL",
-			User:    "42",
-		},
-	}
-
-	a.events <- slack.RTMEvent{Data: evt}
-
-	close(a.events)
-	<-done
-	brain.Finish()
-
-	assert.Empty(t, brain.RecordedEvents())
-}
-
 func TestAdapter_DirectMessages(t *testing.T) {
 	brain := joetest.NewBrain(t)
 	a, _ := newTestAdapter(t)
@@ -112,33 +85,6 @@ func TestAdapter_DirectMessages(t *testing.T) {
 	require.NotEmpty(t, events)
 	expectedEvt := joe.ReceiveMessageEvent{Text: "Hello world", Channel: "D023BB3L2", Data: evt}
 	assert.Equal(t, expectedEvt, events[0])
-}
-
-func TestAdapter_IgnoreDirectOwnMessages(t *testing.T) {
-	brain := joetest.NewBrain(t)
-	a, _ := newTestAdapter(t)
-
-	done := make(chan bool)
-	go func() {
-		a.handleSlackEvents(brain.Brain)
-		done <- true
-	}()
-
-	evt := &slack.MessageEvent{
-		Msg: slack.Msg{
-			Text:    "Hello world",
-			Channel: "D023BB3L2",
-			User:    "42",
-		},
-	}
-
-	a.events <- slack.RTMEvent{Data: evt}
-
-	close(a.events)
-	<-done
-	brain.Finish()
-
-	assert.Empty(t, brain.RecordedEvents())
 }
 
 func TestAdapter_MentionBot(t *testing.T) {
@@ -319,6 +265,42 @@ func TestAdapter_UserTypingEventError(t *testing.T) {
 	expectedUser := joe.User{ID: "UG96B2SGJ"}
 	expectedEvt := joe.UserTypingEvent{User: expectedUser, Channel: "C1H9RESGL"}
 	assert.Equal(t, expectedEvt, events[0])
+}
+
+func TestAdapter_IgnoreOwnMessages(t *testing.T) {
+	cases := map[string]struct{ Channel string }{
+		"channel message": {"C1H9RESGL"}, // map test case name to channel ID
+		"direct message":  {"D023BB3L2"}, // direct slack channels start with a "D"
+	}
+
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			brain := joetest.NewBrain(t)
+			a, _ := newTestAdapter(t)
+
+			done := make(chan bool)
+			go func() {
+				a.handleSlackEvents(brain.Brain)
+				done <- true
+			}()
+
+			evt := &slack.MessageEvent{
+				Msg: slack.Msg{
+					Text:    "Hello world",
+					Channel: c.Channel,
+					User:    a.userID,
+				},
+			}
+
+			a.events <- slack.RTMEvent{Data: evt}
+
+			close(a.events)
+			<-done
+			brain.Finish()
+
+			assert.Empty(t, brain.RecordedEvents())
+		})
+	}
 }
 
 type mockSlack struct {
