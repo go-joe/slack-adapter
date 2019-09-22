@@ -1,5 +1,7 @@
 module github.com/go-joe/slack-adapter
 
+go 1.13
+
 require (
 	github.com/go-joe/joe v0.7.0
 	github.com/gorilla/websocket v1.4.0 // indirect
