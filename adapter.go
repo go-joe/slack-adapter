@@ -153,7 +153,6 @@ func (a *BotAdapter) RegisterAt(brain *joe.Brain) {
 func (a *BotAdapter) handleSlackEvents(brain *joe.Brain) {
 	for msg := range a.events {
 		switch ev := msg.Data.(type) {
-
 		case *slack.MessageEvent:
 			a.handleMessageEvent(ev, brain)
 
