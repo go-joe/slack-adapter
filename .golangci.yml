@@ -36,9 +36,11 @@ linters:
     - prealloc
     - depguard
     - interfacer
+    - goconst
+    - godox
 
 service:
-  golangci-lint-version: 1.15.x # use the fixed version to not introduce new linters unexpectedly
+  golangci-lint-version: 1.19.x # use the fixed version to not introduce new linters unexpectedly
   prepare:
     - GO111MODULE=on go mod vendor # required currently or golangci breaks
 
