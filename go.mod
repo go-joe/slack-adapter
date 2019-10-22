@@ -3,7 +3,7 @@ module github.com/go-joe/slack-adapter
 go 1.13
 
 require (
-	github.com/go-joe/joe v0.8.1-0.20191008141307-36f38c5dafdd
+	github.com/go-joe/joe v0.9.0
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/lusis/go-slackbot v0.0.0-20180109053408-401027ccfef5 // indirect
 	github.com/lusis/slack-test v0.0.0-20180109053238-3c758769bfa6 // indirect

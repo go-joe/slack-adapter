@@ -1,7 +1,7 @@
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/go-joe/joe v0.8.1-0.20191008141307-36f38c5dafdd h1:DULdHuJPkYL2xtVS3xoiH/n7Bk0C2oSvuA64+GkNOfU=
-github.com/go-joe/joe v0.8.1-0.20191008141307-36f38c5dafdd/go.mod h1:fjDMMKm6GV29+egH/IS57PTKHSBMquckyuM7CmXbUQw=
+github.com/go-joe/joe v0.9.0 h1:z8AFVMbm+selB6Svd3R9tJ6wR/jtiwR36UaRqcZ+Q30=
+github.com/go-joe/joe v0.9.0/go.mod h1:fjDMMKm6GV29+egH/IS57PTKHSBMquckyuM7CmXbUQw=
 github.com/gorilla/websocket v1.4.0 h1:WDFjx/TMzVgy9VdMMQi2K2Emtwi2QcUQsztZ/zLaH/Q=
 github.com/gorilla/websocket v1.4.0/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=
 github.com/lusis/go-slackbot v0.0.0-20180109053408-401027ccfef5 h1:AsEBgzv3DhuYHI/GiQh2HxvTP71HCCE9E/tzGUzGdtU=
