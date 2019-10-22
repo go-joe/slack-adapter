@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-joe/joe"
 	"github.com/go-joe/joe/joetest"
+	"github.com/go-joe/joe/reactions"
 	"github.com/nlopes/slack"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -87,8 +88,9 @@ func TestAdapter_DirectMessages(t *testing.T) {
 
 	evt := &slack.MessageEvent{
 		Msg: slack.Msg{
-			Text:    "Hello world",
-			Channel: "D023BB3L2",
+			Text:      "Hello world",
+			Timestamp: "1360782400.498405",
+			Channel:   "D023BB3L2",
 		},
 	}
 
@@ -100,7 +102,7 @@ func TestAdapter_DirectMessages(t *testing.T) {
 
 	events := brain.RecordedEvents()
 	require.NotEmpty(t, events)
-	expectedEvt := joe.ReceiveMessageEvent{Text: "Hello world", Channel: "D023BB3L2", Data: evt}
+	expectedEvt := joe.ReceiveMessageEvent{Text: "Hello world", Channel: "D023BB3L2", ID: "1360782400.498405", Data: evt}
 	assert.Equal(t, expectedEvt, events[0])
 }
 
@@ -116,9 +118,10 @@ func TestAdapter_MentionBot(t *testing.T) {
 
 	evt := &slack.MessageEvent{
 		Msg: slack.Msg{
-			Text:    fmt.Sprintf("Hey %s!", a.userLink(a.userID)),
-			Channel: "D023BB3L2",
-			User:    "test",
+			Text:      fmt.Sprintf("Hey %s!", a.userLink(a.userID)),
+			Timestamp: "1360782400.498405",
+			Channel:   "D023BB3L2",
+			User:      "test",
 		},
 	}
 
@@ -130,7 +133,7 @@ func TestAdapter_MentionBot(t *testing.T) {
 
 	events := brain.RecordedEvents()
 	require.NotEmpty(t, events)
-	expectedEvt := joe.ReceiveMessageEvent{Text: evt.Text, Channel: evt.Channel, AuthorID: evt.User, Data: evt}
+	expectedEvt := joe.ReceiveMessageEvent{Text: evt.Text, Channel: evt.Channel, ID: evt.Timestamp, AuthorID: evt.User, Data: evt}
 	assert.Equal(t, expectedEvt, events[0])
 }
 
@@ -331,6 +334,121 @@ func TestAdapter_IgnoreOwnMessages(t *testing.T) {
 	}
 }
 
+func TestAdapter_ReactionAddedEvent(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, _ := newTestAdapter(t)
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	evt := &slack.ReactionAddedEvent{
+		Type:           "reaction_added",
+		User:           "U024BE7LH",
+		ItemUser:       "U0G9QF9C6",
+		Reaction:       "thumbsup",
+		EventTimestamp: "1360782804.083113",
+	}
+
+	evt.Item.Type = "message"
+	evt.Item.Channel = "C0G9QF9GZ"
+	evt.Item.Timestamp = "1360782400.498405"
+
+	a.events <- slack.RTMEvent{Data: evt}
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	events := brain.RecordedEvents()
+	require.Len(t, events, 1)
+	assert.Equal(t, reactions.Event{
+		Reaction:  reactions.Reaction{Shortcode: "thumbsup"},
+		MessageID: "1360782400.498405",
+		Channel:   "C0G9QF9GZ",
+		AuthorID:  "U024BE7LH",
+	}, events[0])
+}
+
+func TestAdapter_ReactionAddedEvent_IgnoredItemTypes(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, _ := newTestAdapter(t)
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	evt := &slack.ReactionAddedEvent{
+		Type:           "reaction_added",
+		User:           "U024BE7LH",
+		ItemUser:       "U0G9QF9C6",
+		Reaction:       "thumbsup",
+		EventTimestamp: "1360782804.083113",
+	}
+
+	evt.Item.Type = "file"
+	evt.Item.File = "F0HS27V1Z"
+
+	a.events <- slack.RTMEvent{Data: evt}
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	assert.Empty(t, brain.RecordedEvents())
+}
+
+func TestAdapter_ReactionAddedEvent_IgnoreOwnReactions(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, _ := newTestAdapter(t)
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	evt := &slack.ReactionAddedEvent{
+		Type:           "reaction_added",
+		User:           a.userID,
+		ItemUser:       "U0G9QF9C6",
+		Reaction:       "thumbsup",
+		EventTimestamp: "1360782804.083113",
+	}
+
+	evt.Item.Type = "message"
+	evt.Item.Channel = "C0G9QF9GZ"
+	evt.Item.Timestamp = "1360782400.498405"
+
+	a.events <- slack.RTMEvent{Data: evt}
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	assert.Empty(t, brain.RecordedEvents())
+}
+
+func TestAdapter_React(t *testing.T) {
+	a, slackAPI := newTestAdapter(t)
+
+	msg := joe.Message{
+		Channel: "C0G9QF9GZ",
+		ID:      "1360782400.498405",
+	}
+
+	ref := slack.NewRefToMessage(msg.Channel, msg.ID)
+	slackAPI.On("AddReactionContext", a.context, "thumbsup", ref).Return(nil)
+
+	err := a.React(reactions.Thumbsup, msg)
+	require.NoError(t, err)
+	slackAPI.AssertExpectations(t)
+}
+
 type mockSlack struct {
 	mock.Mock
 }
@@ -350,6 +468,11 @@ func (m *mockSlack) PostMessageContext(ctx context.Context, channelID string,
 	}
 	args := m.Called(callArgs...)
 	return args.String(0), args.String(1), args.Error(2)
+}
+
+func (m *mockSlack) AddReactionContext(ctx context.Context, name string, item slack.ItemRef) error {
+	args := m.Called(ctx, name, item)
+	return args.Error(0)
 }
 
 func (m *mockSlack) GetUserInfo(user string) (usr *slack.User, err error) {

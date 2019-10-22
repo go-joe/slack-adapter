@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/go-joe/joe"
+	"github.com/go-joe/joe/reactions"
 	"github.com/nlopes/slack"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -45,6 +46,7 @@ type Config struct {
 type slackAPI interface {
 	AuthTestContext(context.Context) (*slack.AuthTestResponse, error)
 	PostMessageContext(ctx context.Context, channelID string, opts ...slack.MsgOption) (respChannel, respTimestamp string, err error)
+	AddReactionContext(ctx context.Context, name string, item slack.ItemRef) error
 	GetUserInfo(user string) (*slack.User, error)
 	Disconnect() error
 }
@@ -156,6 +158,9 @@ func (a *BotAdapter) handleSlackEvents(brain *joe.Brain) {
 		case *slack.MessageEvent:
 			a.handleMessageEvent(ev, brain)
 
+		case *slack.ReactionAddedEvent:
+			a.handleReactionAddedEvent(ev, brain)
+
 		case *slack.RTMError:
 			a.logger.Error("Slack Real Time Messaging (RTM) error", zap.Any("event", ev))
 
@@ -194,8 +199,29 @@ func (a *BotAdapter) handleMessageEvent(ev *slack.MessageEvent, brain *joe.Brain
 	brain.Emit(joe.ReceiveMessageEvent{
 		Text:     text,
 		Channel:  ev.Channel,
+		ID:       ev.Timestamp, // slack uses the message timestamps as identifiers within the channel
 		AuthorID: ev.User,
 		Data:     ev,
+	})
+}
+
+// See https://api.slack.com/events/reaction_added
+func (a *BotAdapter) handleReactionAddedEvent(ev *slack.ReactionAddedEvent, brain *joe.Brain) {
+	if ev.User == a.userID {
+		// reaction is from us, ignore it!
+		return
+	}
+
+	if ev.Item.Type != "message" {
+		// reactions for other things except messages is not supported by Joe
+		return
+	}
+
+	brain.Emit(reactions.Event{
+		Channel:   ev.Item.Channel,
+		MessageID: ev.Item.Timestamp,
+		AuthorID:  ev.User,
+		Reaction:  reactions.Reaction{Shortcode: ev.Reaction},
 	})
 }
 
@@ -245,6 +271,13 @@ func (a *BotAdapter) Send(text, channelID string) error {
 	)
 
 	return err
+}
+
+// React implements joe.ReactionAwareAdapter by letting the bot attach the given
+// reaction to the message.
+func (a *BotAdapter) React(reaction reactions.Reaction, msg joe.Message) error {
+	ref := slack.NewRefToMessage(msg.Channel, msg.ID)
+	return a.slack.AddReactionContext(a.context, reaction.Shortcode, ref)
 }
 
 // Close disconnects the adapter from the slack API.
