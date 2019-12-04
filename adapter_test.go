@@ -2,6 +2,7 @@ package slack
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"runtime"
@@ -12,7 +13,6 @@ import (
 	"github.com/go-joe/joe/joetest"
 	"github.com/go-joe/joe/reactions"
 	"github.com/nlopes/slack"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -52,6 +52,20 @@ func TestNewAdapter_Name(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Test", a.name)
 	assert.NotNil(t, a.logger)
+}
+
+func TestNewAdapter_ErrorWrap(t *testing.T) {
+	ctx := context.Background()
+	client := new(mockSlack)
+
+	authErr := errors.New("this did not work")
+	client.On("AuthTestContext", ctx).Return(nil, authErr)
+
+	conf := Config{Name: "Test"}
+	a, err := newAdapter(ctx, client, nil, conf)
+	assert.Nil(t, a)
+	assert.EqualError(t, err, "slack auth test failed: this did not work")
+	assert.True(t, errors.Is(err, authErr))
 }
 
 func TestAdapter_IgnoreNormalMessages(t *testing.T) {
@@ -613,9 +627,12 @@ type mockSlack struct {
 
 var _ slackAPI = new(mockSlack)
 
-func (m *mockSlack) AuthTestContext(ctx context.Context) (*slack.AuthTestResponse, error) {
+func (m *mockSlack) AuthTestContext(ctx context.Context) (resp *slack.AuthTestResponse, err error) {
 	args := m.Called(ctx)
-	return args.Get(0).(*slack.AuthTestResponse), args.Error(1)
+	if x := args.Get(0); x != nil {
+		resp = x.(*slack.AuthTestResponse)
+	}
+	return resp, args.Error(1)
 }
 
 func (m *mockSlack) PostMessageContext(ctx context.Context, channelID string,
