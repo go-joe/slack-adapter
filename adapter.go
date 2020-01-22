@@ -168,7 +168,10 @@ func (a *BotAdapter) handleSlackEvents(brain *joe.Brain) {
 			a.handleReactionAddedEvent(ev, brain)
 
 		case *slack.RTMError:
-			a.logger.Error("Slack Real Time Messaging (RTM) error", zap.Any("event", ev))
+			a.logger.Error("Slack Real Time Messaging (RTM) error",
+				zap.Int("code", ev.Code),
+				zap.String("msg", ev.Msg),
+			)
 
 		case *slack.UnmarshallingErrorEvent:
 			a.logger.Error("Slack unmarshalling error", zap.Error(ev.ErrorObj))

@@ -63,3 +63,16 @@ func TestWithMessageParams(t *testing.T) {
 	assert.Equal(t, "none", conf.SendMsgParams.Parse)
 	assert.Equal(t, 0, conf.SendMsgParams.LinkNames)
 }
+
+func TestWithLogUnknownMessageTypes(t *testing.T) {
+	conf, err := newConf("my-secret-token", joeConf(t), nil)
+	require.NoError(t, err)
+
+	assert.Equal(t, false, conf.LogUnknownMessageTypes, "LogUnknownMessageTypes should be disabled by default")
+
+	conf, err = newConf("my-secret-token", joeConf(t), []Option{
+		WithLogUnknownMessageTypes(),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, true, conf.LogUnknownMessageTypes)
+}
