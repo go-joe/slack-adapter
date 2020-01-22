@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 - Update Slack client library to fix RTM unmarshal errors
+- Add new `WithLogUnknownMessageTypes` option to help debug issues with Slack
+- Log slack errors when RTM message parsing fails
 
 ## [v0.7.0] - 2019-10-22
 - Support sending and receiving reactions
