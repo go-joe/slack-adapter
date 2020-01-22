@@ -16,7 +16,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
+	"go.uber.org/zap/zaptest/observer"
 )
 
 // compile time test to check if we are implementing the interface.
@@ -447,6 +449,133 @@ func TestAdapter_React(t *testing.T) {
 	err := a.React(reactions.Thumbsup, msg)
 	require.NoError(t, err)
 	slackAPI.AssertExpectations(t)
+}
+
+func TestAdapter_IgnoreUnknownEventTypes(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, _ := newTestAdapter(t)
+
+	core, logs := observer.New(zap.DebugLevel)
+	a.logger = zap.New(core)
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	type unknownEvent struct{ Text string }
+	a.events <- slack.RTMEvent{Data: unknownEvent{"test"}}
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	events := brain.RecordedEvents()
+	require.Len(t, events, 0)
+
+	assert.Empty(t, logs.TakeAll())
+}
+
+func TestAdapter_LogUnknownEventTypes(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, _ := newTestAdapter(t)
+
+	core, logs := observer.New(zap.DebugLevel)
+	a.logger = zap.New(core)
+	a.logUnknownMessageTypes = true
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	type unknownEvent struct{ Text string }
+	evt := slack.RTMEvent{Type: "test_type", Data: unknownEvent{"test"}}
+	a.events <- evt
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	events := brain.RecordedEvents()
+	require.Empty(t, events)
+
+	messages := logs.TakeAll()
+	require.Len(t, messages, 1)
+	assert.Equal(t, "Received unknown type from Real Time Messaging (RTM) system", messages[0].Message)
+
+	fields := messages[0].ContextMap()
+	assert.Equal(t, "test_type", fields["type"])
+	assert.Equal(t, "slack.unknownEvent", fields["go_type"])
+	assert.Equal(t, evt.Data, fields["data"])
+}
+
+func TestAdapter_RTMError(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, _ := newTestAdapter(t)
+
+	core, logs := observer.New(zap.DebugLevel)
+	a.logger = zap.New(core)
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	a.events <- slack.RTMEvent{Data: &slack.RTMError{
+		Code: 42,
+		Msg:  "this did not work",
+	}}
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	events := brain.RecordedEvents()
+	require.Empty(t, events)
+
+	messages := logs.TakeAll()
+	require.Len(t, messages, 1)
+	assert.Equal(t, "Slack Real Time Messaging (RTM) error", messages[0].Message)
+
+	fields := messages[0].ContextMap()
+	assert.EqualValues(t, 42, fields["code"])
+	assert.Equal(t, "this did not work", fields["msg"])
+}
+
+func TestAdapter_UnmarshallingErrorEvent(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, _ := newTestAdapter(t)
+
+	core, logs := observer.New(zap.DebugLevel)
+	a.logger = zap.New(core)
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	a.events <- slack.RTMEvent{Data: &slack.UnmarshallingErrorEvent{
+		ErrorObj: errors.New("failure"),
+	}}
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	events := brain.RecordedEvents()
+	require.Empty(t, events)
+
+	messages := logs.TakeAll()
+	require.Len(t, messages, 1)
+	assert.Equal(t, "Slack unmarshalling error", messages[0].Message)
+
+	fields := messages[0].ContextMap()
+	assert.Equal(t, "failure", fields["error"])
 }
 
 type mockSlack struct {

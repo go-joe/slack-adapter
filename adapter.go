@@ -22,6 +22,8 @@ type BotAdapter struct {
 	name    string
 	userID  string
 
+	logUnknownMessageTypes bool
+
 	sendMsgParams slack.PostMessageParameters
 
 	slack  slackAPI
@@ -41,6 +43,10 @@ type Config struct {
 	// SendMsgParams contains settings that are applied to all messages sent
 	// by the BotAdapter.
 	SendMsgParams slack.PostMessageParameters
+
+	// Log unknown message types as error message for debugging. This option is
+	// disabled by default.
+	LogUnknownMessageTypes bool
 }
 
 type slackAPI interface {
@@ -162,7 +168,13 @@ func (a *BotAdapter) handleSlackEvents(brain *joe.Brain) {
 			a.handleReactionAddedEvent(ev, brain)
 
 		case *slack.RTMError:
-			a.logger.Error("Slack Real Time Messaging (RTM) error", zap.Any("event", ev))
+			a.logger.Error("Slack Real Time Messaging (RTM) error",
+				zap.Int("code", ev.Code),
+				zap.String("msg", ev.Msg),
+			)
+
+		case *slack.UnmarshallingErrorEvent:
+			a.logger.Error("Slack unmarshalling error", zap.Error(ev.ErrorObj))
 
 		case *slack.InvalidAuthEvent:
 			a.logger.Error("Invalid authentication error", zap.Any("event", ev))
@@ -175,7 +187,13 @@ func (a *BotAdapter) handleSlackEvents(brain *joe.Brain) {
 			})
 
 		default:
-			// Ignore other events..
+			if a.logUnknownMessageTypes {
+				a.logger.Error("Received unknown type from Real Time Messaging (RTM) system",
+					zap.String("type", msg.Type),
+					zap.Any("data", msg.Data),
+					zap.String("go_type", fmt.Sprintf("%T", msg.Data)),
+				)
+			}
 		}
 	}
 }
