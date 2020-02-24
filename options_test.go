@@ -76,3 +76,12 @@ func TestWithLogUnknownMessageTypes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, true, conf.LogUnknownMessageTypes)
 }
+
+func TestWithListenPassive(t *testing.T) {
+	conf, err := newConf("my-secret-token", joeConf(t), []Option{
+		WithListenPassive(),
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, true, conf.ListenPassive)
+}
