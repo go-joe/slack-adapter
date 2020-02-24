@@ -213,7 +213,7 @@ func (a *BotAdapter) handleMessageEvent(ev *slack.MessageEvent, brain *joe.Brain
 		return
 	}
 
-	text := strings.TrimSpace(strings.TrimPrefix(ev.Text, selfLink))
+	text := strings.TrimSpace(strings.TrimPrefix(ev.Msg.Text, selfLink))
 	brain.Emit(joe.ReceiveMessageEvent{
 		Text:     text,
 		Channel:  ev.Channel,
