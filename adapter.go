@@ -23,6 +23,7 @@ type BotAdapter struct {
 	userID  string
 
 	logUnknownMessageTypes bool
+	listenPassive          bool
 
 	sendMsgParams slack.PostMessageParameters
 
@@ -47,6 +48,9 @@ type Config struct {
 	// Log unknown message types as error message for debugging. This option is
 	// disabled by default.
 	LogUnknownMessageTypes bool
+
+	// Listen and respond to all messages not just those directed at the Bot User.
+	ListenPassive bool
 }
 
 type slackAPI interface {
@@ -129,6 +133,7 @@ func newAdapter(ctx context.Context, client slackAPI, events chan slack.RTMEvent
 		name:          conf.Name,
 		sendMsgParams: conf.SendMsgParams,
 		users:         map[string]joe.User{}, // TODO: cache expiration?
+		listenPassive: conf.ListenPassive,
 	}
 
 	if a.logger == nil {
@@ -208,12 +213,12 @@ func (a *BotAdapter) handleMessageEvent(ev *slack.MessageEvent, brain *joe.Brain
 	// check if we have a DM, or standard channel post
 	selfLink := a.userLink(a.userID)
 	direct := strings.HasPrefix(ev.Msg.Channel, "D")
-	if !direct && !strings.Contains(ev.Msg.Text, selfLink) {
+	if !direct && !strings.Contains(ev.Msg.Text, selfLink) && !a.listenPassive {
 		// msg not for us!
 		return
 	}
 
-	text := strings.TrimSpace(strings.TrimPrefix(ev.Text, selfLink))
+	text := strings.TrimSpace(strings.TrimPrefix(ev.Msg.Text, selfLink))
 	brain.Emit(joe.ReceiveMessageEvent{
 		Text:     text,
 		Channel:  ev.Channel,

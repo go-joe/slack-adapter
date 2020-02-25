@@ -167,6 +167,35 @@ func TestAdapter_MentionBotPrefix(t *testing.T) {
 	assert.Equal(t, expectedEvt, events[0])
 }
 
+func TestAdapter_PassiveMessage(t *testing.T) {
+	brain := joetest.NewBrain(t)
+	a, _ := newTestAdapter(t)
+	a.listenPassive = true
+
+	done := make(chan bool)
+	go func() {
+		a.handleSlackEvents(brain.Brain)
+		done <- true
+	}()
+
+	evt := &slack.MessageEvent{
+		Msg: slack.Msg{
+			Text:    "Hello world",
+			Channel: "C1H9RESGL",
+		},
+	}
+	a.events <- slack.RTMEvent{Data: evt}
+
+	close(a.events)
+	<-done
+	brain.Finish()
+
+	events := brain.RecordedEvents()
+	require.NotEmpty(t, events)
+	expectedEvt := joe.ReceiveMessageEvent{Text: evt.Text, Channel: evt.Channel, ID: evt.Timestamp, AuthorID: evt.User, Data: evt}
+	assert.Equal(t, expectedEvt, events[0])
+}
+
 func TestAdapter_Send(t *testing.T) {
 	a, slackAPI := newTestAdapter(t)
 
