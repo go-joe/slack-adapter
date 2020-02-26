@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- Nothing so far
+- Use error wrapping of standard library instead of github.com/pkg/errors
 
 ## [v0.9.0] - 2020-02-25
 - Add `ListenPassive` to send all seen messages to the Bot instead of only the ones directed to it 
