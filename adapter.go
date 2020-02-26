@@ -10,7 +10,6 @@ import (
 	"github.com/go-joe/joe"
 	"github.com/go-joe/joe/reactions"
 	"github.com/nlopes/slack"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
 
@@ -142,7 +141,7 @@ func newAdapter(ctx context.Context, client slackAPI, events chan slack.RTMEvent
 
 	resp, err := client.AuthTestContext(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "slack auth test failed")
+		return nil, fmt.Errorf("slack auth test failed: %w", err)
 	}
 
 	a.userID = resp.UserID
