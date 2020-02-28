@@ -35,33 +35,26 @@ linters:
     - maligned
     - prealloc
     - depguard
-    - interfacer
     - goconst
     - godox
+    - wsl
+    - gomnd
 
 service:
-  golangci-lint-version: 1.19.x # use the fixed version to not introduce new linters unexpectedly
+  golangci-lint-version: 1.23.x # use the fixed version to not introduce new linters unexpectedly
   prepare:
     - GO111MODULE=on go mod vendor # required currently or golangci breaks
 
 issues:
   exclude-use-default: false
   exclude-rules:
-    - text: "G104: Errors unhandled."
-      path: ".+_test\\.go"
-      linters:
-        - gosec
-
+    # False positive error (package comment exists in adapter.go)
     - text: "should have a package comment, unless it's in another file for this package"
       linters:
         - golint
 
+    # False positive linting error in unt tests
     - text: "Using the variable on range scope `c` in function literal"
       path: ".+_test\\.go"
       linters:
         - scopelint
-
-    - text: "`ctx` is a global variable"
-      path: ".+_test\\.go"
-      linters:
-        - gochecknoglobals
