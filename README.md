@@ -69,7 +69,7 @@ contribute. If you want to hack on this repository, please read the short
 ## Versioning
 
 We use [SemVer](http://semver.org/) for versioning. For the versions available,
-see the [tags on this repository][tags. 
+see the [tags on this repository][tags]. 
 
 ## Authors
 
