@@ -49,10 +49,11 @@ func main() {
 }
 ```
 
-So far the adapter will emit the following events to the robot brain:
+The adapter will emit the following events to the robot brain:
 
 - `joe.ReceiveMessageEvent`
 - `joe.UserTypingEvent`
+- `reactions.Event`
 
 ## Built With
 
