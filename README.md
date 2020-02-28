@@ -59,6 +59,7 @@ The adapter will emit the following events to the robot brain:
 
 * [nlopes/slack](https://github.com/nlopes/slack) - Slack API in Go
 * [zap](https://github.com/uber-go/zap) - Blazing fast, structured, leveled logging in Go
+* [testify](https://github.com/stretchr/testify) - A simple unit test library
 
 ## Contributing
 
