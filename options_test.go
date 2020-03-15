@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/go-joe/joe"
-	"github.com/nlopes/slack"
+	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"

@@ -12,7 +12,7 @@ import (
 	"github.com/go-joe/joe"
 	"github.com/go-joe/joe/joetest"
 	"github.com/go-joe/joe/reactions"
-	"github.com/nlopes/slack"
+	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

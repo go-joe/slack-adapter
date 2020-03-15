@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-joe/joe"
 	"github.com/go-joe/joe/reactions"
-	"github.com/nlopes/slack"
+	"github.com/slack-go/slack"
 	"go.uber.org/zap"
 )
 
