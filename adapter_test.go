@@ -217,7 +217,7 @@ func TestAdapter_Send(t *testing.T) {
 		return mock.MatchedBy(func(actual slack.MsgOption) bool {
 			pc := reflect.ValueOf(actual).Pointer()
 			name := runtime.FuncForPC(pc).Name()
-			name = strings.TrimPrefix(name, "github.com/nlopes/")
+			name = strings.TrimPrefix(name, "github.com/slack-go/")
 			name = strings.TrimSuffix(name, ".func1")
 			return assert.Equal(t, expectedName, name)
 		})
