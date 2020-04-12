@@ -1,7 +1,7 @@
 package slack
 
 import (
-	"github.com/nlopes/slack"
+	"github.com/slack-go/slack"
 	"go.uber.org/zap"
 )
 

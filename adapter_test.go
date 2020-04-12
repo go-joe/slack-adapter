@@ -12,7 +12,7 @@ import (
 	"github.com/go-joe/joe"
 	"github.com/go-joe/joe/joetest"
 	"github.com/go-joe/joe/reactions"
-	"github.com/nlopes/slack"
+	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -217,7 +217,7 @@ func TestAdapter_Send(t *testing.T) {
 		return mock.MatchedBy(func(actual slack.MsgOption) bool {
 			pc := reflect.ValueOf(actual).Pointer()
 			name := runtime.FuncForPC(pc).Name()
-			name = strings.TrimPrefix(name, "github.com/nlopes/")
+			name = strings.TrimPrefix(name, "github.com/slack-go/")
 			name = strings.TrimSuffix(name, ".func1")
 			return assert.Equal(t, expectedName, name)
 		})
