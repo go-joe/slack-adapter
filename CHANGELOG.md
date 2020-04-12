@@ -5,7 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- Replace slack library from [nlopes/slack](https://github.com/nlopes/slack) to [slack-go/slack](https://github.com/slack-go/slack)
+Nothing so far
+
+## [v2.0.0] - 2020-04-12
+- **Breaking change** :fire: : Replace slack library from [nlopes/slack](https://github.com/nlopes/slack)
+  to [slack-go/slack](https://github.com/slack-go/slack). This change breaks
+  compatibility of the `WithMessageParams(…)` option which used to accept a
+  `slack.PostMessageParameters` from `github.com/nlopes/slack` but now requires
+  the same type from `github.com/slack-go/slack`. 
 
 ## [v1.0.0] - 2020-02-28
 - Use error wrapping of standard library instead of github.com/pkg/errors
@@ -66,7 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial alpha release
 
-[Unreleased]: https://github.com/go-joe/slack-adapter/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/go-joe/slack-adapter/compare/v2.0.0...HEAD
+[v2.0.0]: https://github.com/go-joe/slack-adapter/compare/v1.0.0...v2.0.0
 [v1.0.0]: https://github.com/go-joe/slack-adapter/compare/v0.9.0...v1.0.0
 [v0.9.0]: https://github.com/go-joe/slack-adapter/compare/v0.8.0...v0.9.0
 [v0.8.0]: https://github.com/go-joe/slack-adapter/compare/v0.7.0...v0.8.0
