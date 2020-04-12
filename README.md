@@ -31,7 +31,7 @@ package main
 
 import (
 	"github.com/go-joe/joe"
-	"github.com/go-joe/slack-adapter"
+	"github.com/go-joe/slack-adapter/v2"
 )
 
 func main() {
