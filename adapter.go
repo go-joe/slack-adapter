@@ -14,7 +14,7 @@ import (
 )
 
 // BotAdapter implements a joe.Adapter that reads and writes messages to and
-// from Slack.
+// from Slack using the RTM API.
 type BotAdapter struct {
 	context context.Context
 	logger  *zap.Logger
@@ -27,29 +27,16 @@ type BotAdapter struct {
 	sendMsgParams slack.PostMessageParameters
 
 	slack  slackAPI
-	events chan slack.RTMEvent
+	rtm    slackRTM
+	events chan slackEvent
 
 	usersMu sync.RWMutex
 	users   map[string]joe.User
 }
 
-// Config contains the configuration of a BotAdapter.
-type Config struct {
-	Token  string
-	Name   string
-	Debug  bool
-	Logger *zap.Logger
-
-	// SendMsgParams contains settings that are applied to all messages sent
-	// by the BotAdapter.
-	SendMsgParams slack.PostMessageParameters
-
-	// Log unknown message types as error message for debugging. This option is
-	// disabled by default.
-	LogUnknownMessageTypes bool
-
-	// Listen and respond to all messages not just those directed at the Bot User.
-	ListenPassive bool
+type slackEvent struct {
+	Type string
+	Data interface{}
 }
 
 type slackAPI interface {
@@ -57,14 +44,17 @@ type slackAPI interface {
 	PostMessageContext(ctx context.Context, channelID string, opts ...slack.MsgOption) (respChannel, respTimestamp string, err error)
 	AddReactionContext(ctx context.Context, name string, item slack.ItemRef) error
 	GetUserInfo(user string) (*slack.User, error)
+}
+
+type slackRTM interface {
 	Disconnect() error
 }
 
-// Adapter returns a new slack Adapter as joe.Module.
+// Adapter returns a new BotAdapter as joe.Module.
 //
 // Apart from the typical joe.ReceiveMessageEvent event, this adapter also emits
 // the joe.UserTypingEvent. The ReceiveMessageEvent.Data field is always a
-// pointer to the corresponding github.com/nlopes/slack.MessageEvent instance.
+// pointer to the corresponding github.com/slack-go/slack.MessageEvent instance.
 func Adapter(token string, opts ...Option) joe.Module {
 	return joe.ModuleFunc(func(joeConf *joe.Config) error {
 		conf, err := newConf(token, joeConf, opts)
@@ -104,28 +94,42 @@ func newConf(token string, joeConf *joe.Config, opts []Option) (Config, error) {
 	return conf, nil
 }
 
-// NewAdapter creates a new *BotAdapter that connects to Slack. Note that you
-// will usually configure the slack adapter as joe.Module (i.e. using the
-// Adapter function of this package).
+// NewAdapter creates a new *BotAdapter that connects to Slack using the RTM API.
+// Note that you will usually configure the slack adapter as joe.Module (i.e.
+// using the Adapter function of this package).
 func NewAdapter(ctx context.Context, conf Config) (*BotAdapter, error) {
-	var slackClient struct {
-		*slack.Client
-		*slack.RTM
-	}
-
-	slackClient.Client = slack.New(conf.Token, slack.OptionDebug(conf.Debug)) // TODO: logger option?
-	slackClient.RTM = slackClient.Client.NewRTM()
+	client := slack.New(conf.Token, slack.OptionDebug(conf.Debug))
+	rtm := client.NewRTM()
 
 	// Start managing the slack Real Time Messaging (RTM) connection.
 	// This goroutine is closed when the BotAdapter disconnects from slack in
 	// BotAdapter.Close()
-	go slackClient.RTM.ManageConnection()
-	return newAdapter(ctx, slackClient, slackClient.RTM.IncomingEvents, conf)
+	go rtm.ManageConnection()
+
+	// We need to translate the RTMEvent channel into the more generic slackEvent
+	// channel which is used by the BotAdapter internally.
+	events := make(chan slackEvent)
+	go func() {
+		defer close(events)
+		for evt := range rtm.IncomingEvents {
+			events <- slackEvent{
+				Type: evt.Type,
+				Data: evt.Data,
+			}
+
+			if x, ok := evt.Data.(*slack.DisconnectedEvent); ok && x.Intentional {
+				return
+			}
+		}
+	}()
+
+	return newAdapter(ctx, client, rtm, events, conf)
 }
 
-func newAdapter(ctx context.Context, client slackAPI, events chan slack.RTMEvent, conf Config) (*BotAdapter, error) {
+func newAdapter(ctx context.Context, client slackAPI, rtm slackRTM, events chan slackEvent, conf Config) (*BotAdapter, error) {
 	a := &BotAdapter{
 		slack:         client,
+		rtm:           rtm, // may be nil
 		events:        events,
 		context:       ctx,
 		logger:        conf.Logger,
@@ -189,6 +193,12 @@ func (a *BotAdapter) handleSlackEvents(brain *joe.Brain) {
 				User:    a.userByID(ev.User),
 				Channel: ev.Channel,
 			})
+
+		case *slack.DisconnectedEvent:
+			if ev.Intentional {
+				a.logger.Debug("Disconnected slack adapter")
+				return
+			}
 
 		default:
 			if a.logUnknownMessageTypes {
@@ -304,10 +314,14 @@ func (a *BotAdapter) React(reaction reactions.Reaction, msg joe.Message) error {
 
 // Close disconnects the adapter from the slack API.
 func (a *BotAdapter) Close() error {
-	return a.slack.Disconnect()
+	if a.rtm != nil {
+		return a.rtm.Disconnect()
+	}
+
+	return nil
 }
 
-// As long as github.com/nlopes/slack does not support the "link_names=1"
+// As long as github.com/slack-go/slack does not support the "link_names=1"
 // argument we have to format the user link ourselves.
 // See https://api.slack.com/docs/message-formatting#linking_to_channels_and_users
 func (a *BotAdapter) userLink(userID string) string {

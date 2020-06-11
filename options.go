@@ -1,12 +1,47 @@
 package slack
 
 import (
+	"crypto/tls"
+	"errors"
+	"time"
+
 	"github.com/slack-go/slack"
 	"go.uber.org/zap"
 )
 
 // An Option is used to configure the slack adapter.
 type Option func(*Config) error
+
+// Config contains the configuration of a BotAdapter.
+type Config struct {
+	Token  string
+	Name   string
+	Debug  bool
+	Logger *zap.Logger
+
+	// SendMsgParams contains settings that are applied to all messages sent
+	// by the BotAdapter.
+	SendMsgParams slack.PostMessageParameters
+
+	// Log unknown message types as error message for debugging. This option is
+	// disabled by default.
+	LogUnknownMessageTypes bool
+
+	// Listen and respond to all messages not just those directed at the Bot User.
+	ListenPassive bool
+
+	// Options if you want to use the Slack Events API. Ignored on the normal RTM adapter.
+	EventsAPI EventsAPIConfig
+}
+
+// EventsAPIConfig contains the configuration of an EventsAPIServer.
+type EventsAPIConfig struct {
+	ShutdownTimeout   time.Duration
+	ReadTimeout       time.Duration
+	WriteTimeout      time.Duration
+	TLSConf           *tls.Config
+	CertFile, KeyFile string
+}
 
 // WithLogger can be used to inject a different logger for the slack adapater.
 func WithLogger(logger *zap.Logger) Option {
@@ -47,6 +82,61 @@ func WithLogUnknownMessageTypes() Option {
 func WithListenPassive() Option {
 	return func(conf *Config) error {
 		conf.ListenPassive = true
+		return nil
+	}
+}
+
+// WithTLS is an option for the EventsAPIServer that enables serving HTTP
+// requests via TLS.
+func WithTLS(certFile, keyFile string) Option {
+	return func(conf *Config) error {
+		if certFile == "" {
+			return errors.New("path to certificate file cannot be empty")
+		}
+		if keyFile == "" {
+			return errors.New("path to private key file cannot be empty")
+		}
+
+		conf.EventsAPI.CertFile = certFile
+		conf.EventsAPI.KeyFile = keyFile
+
+		return nil
+	}
+}
+
+// WithTLSConfig is an option for the EventsAPIServer that can be used in
+// combination with the WithTLS(…) option to configure the HTTPS server.
+func WithTLSConfig(tlsConf *tls.Config) Option {
+	return func(conf *Config) error {
+		conf.EventsAPI.TLSConf = tlsConf
+		return nil
+	}
+}
+
+// WithTimeouts is an option for the EventsAPIServer that sets both the read
+// and write timeout of the HTTP server to the same given value.
+func WithTimeouts(d time.Duration) Option {
+	return func(conf *Config) error {
+		conf.EventsAPI.ReadTimeout = d
+		conf.EventsAPI.WriteTimeout = d
+		return nil
+	}
+}
+
+// WithReadTimeout is an option for the EventsAPIServer that sets the servers
+// maximum duration for reading the entire HTTP request, including the body.
+func WithReadTimeout(d time.Duration) Option {
+	return func(conf *Config) error {
+		conf.EventsAPI.ReadTimeout = d
+		return nil
+	}
+}
+
+// WithWriteTimeout is an option for the EventsAPIServer that sets the
+// servers maximum duration before timing out writes of the HTTP response.
+func WithWriteTimeout(d time.Duration) Option {
+	return func(conf *Config) error {
+		conf.EventsAPI.WriteTimeout = d
 		return nil
 	}
 }

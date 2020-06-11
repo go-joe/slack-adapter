@@ -33,8 +33,8 @@ func newTestAdapter(t *testing.T) (*BotAdapter, *mockSlack) {
 	client.On("AuthTestContext", ctx).Return(authTestResp, nil)
 
 	conf := Config{Logger: logger}
-	events := make(chan slack.RTMEvent)
-	a, err := newAdapter(ctx, client, events, conf)
+	events := make(chan slackEvent)
+	a, err := newAdapter(ctx, client, client, events, conf)
 	require.NoError(t, err)
 
 	return a, client
@@ -48,7 +48,7 @@ func TestNewAdapter_Name(t *testing.T) {
 	client.On("AuthTestContext", ctx).Return(authTestResp, nil)
 
 	conf := Config{Name: "Test"}
-	a, err := newAdapter(ctx, client, nil, conf)
+	a, err := newAdapter(ctx, client, client, nil, conf)
 	require.NoError(t, err)
 	assert.Equal(t, "Test", a.name)
 	assert.NotNil(t, a.logger)
@@ -62,7 +62,7 @@ func TestNewAdapter_ErrorWrap(t *testing.T) {
 	client.On("AuthTestContext", ctx).Return(nil, authErr)
 
 	conf := Config{Name: "Test"}
-	a, err := newAdapter(ctx, client, nil, conf)
+	a, err := newAdapter(ctx, client, client, nil, conf)
 	assert.Nil(t, a)
 	assert.EqualError(t, err, "slack auth test failed: this did not work")
 	assert.True(t, errors.Is(err, authErr))
@@ -78,7 +78,7 @@ func TestAdapter_IgnoreNormalMessages(t *testing.T) {
 		done <- true
 	}()
 
-	a.events <- slack.RTMEvent{Data: &slack.MessageEvent{
+	a.events <- slackEvent{Data: &slack.MessageEvent{
 		Msg: slack.Msg{
 			Text:    "Hello world",
 			Channel: "C1H9RESGL",
@@ -110,7 +110,7 @@ func TestAdapter_DirectMessages(t *testing.T) {
 		},
 	}
 
-	a.events <- slack.RTMEvent{Data: evt}
+	a.events <- slackEvent{Data: evt}
 
 	close(a.events)
 	<-done
@@ -141,7 +141,7 @@ func TestAdapter_MentionBot(t *testing.T) {
 		},
 	}
 
-	a.events <- slack.RTMEvent{Data: evt}
+	a.events <- slackEvent{Data: evt}
 
 	close(a.events)
 	<-done
@@ -169,7 +169,7 @@ func TestAdapter_MentionBotPrefix(t *testing.T) {
 		},
 	}
 
-	a.events <- slack.RTMEvent{Data: evt}
+	a.events <- slackEvent{Data: evt}
 
 	close(a.events)
 	<-done
@@ -198,7 +198,7 @@ func TestAdapter_PassiveMessage(t *testing.T) {
 			Channel: "C1H9RESGL",
 		},
 	}
-	a.events <- slack.RTMEvent{Data: evt}
+	a.events <- slackEvent{Data: evt}
 
 	close(a.events)
 	<-done
@@ -260,7 +260,7 @@ func TestAdapter_UserTypingEvent(t *testing.T) {
 		RealName: "John Doe",
 	}, nil)
 
-	a.events <- slack.RTMEvent{Data: &slack.UserTypingEvent{
+	a.events <- slackEvent{Data: &slack.UserTypingEvent{
 		User:    "UG96B2SGJ",
 		Channel: "C1H9RESGL",
 	}}
@@ -293,7 +293,7 @@ func TestAdapter_UserTypingCache(t *testing.T) {
 		RealName: "John Doe",
 	}, nil).Once()
 
-	evt := slack.RTMEvent{Data: &slack.UserTypingEvent{
+	evt := slackEvent{Data: &slack.UserTypingEvent{
 		User:    "UG96B2SGJ",
 		Channel: "C1H9RESGL",
 	}}
@@ -326,7 +326,7 @@ func TestAdapter_UserTypingEventError(t *testing.T) {
 
 	slackAPI.On("GetUserInfo", "UG96B2SGJ").Return(nil, errors.New("something went wrong"))
 
-	a.events <- slack.RTMEvent{Data: &slack.UserTypingEvent{
+	a.events <- slackEvent{Data: &slack.UserTypingEvent{
 		User:    "UG96B2SGJ",
 		Channel: "C1H9RESGL",
 	}}
@@ -368,7 +368,7 @@ func TestAdapter_IgnoreOwnMessages(t *testing.T) {
 				},
 			}
 
-			a.events <- slack.RTMEvent{Data: evt}
+			a.events <- slackEvent{Data: evt}
 
 			close(a.events)
 			<-done
@@ -401,7 +401,7 @@ func TestAdapter_ReactionAddedEvent(t *testing.T) {
 	evt.Item.Channel = "C0G9QF9GZ"
 	evt.Item.Timestamp = "1360782400.498405"
 
-	a.events <- slack.RTMEvent{Data: evt}
+	a.events <- slackEvent{Data: evt}
 
 	close(a.events)
 	<-done
@@ -438,7 +438,7 @@ func TestAdapter_ReactionAddedEvent_IgnoredItemTypes(t *testing.T) {
 	evt.Item.Type = "file"
 	evt.Item.File = "F0HS27V1Z"
 
-	a.events <- slack.RTMEvent{Data: evt}
+	a.events <- slackEvent{Data: evt}
 
 	close(a.events)
 	<-done
@@ -469,7 +469,7 @@ func TestAdapter_ReactionAddedEvent_IgnoreOwnReactions(t *testing.T) {
 	evt.Item.Channel = "C0G9QF9GZ"
 	evt.Item.Timestamp = "1360782400.498405"
 
-	a.events <- slack.RTMEvent{Data: evt}
+	a.events <- slackEvent{Data: evt}
 
 	close(a.events)
 	<-done
@@ -508,7 +508,7 @@ func TestAdapter_IgnoreUnknownEventTypes(t *testing.T) {
 	}()
 
 	type unknownEvent struct{ Text string }
-	a.events <- slack.RTMEvent{Data: unknownEvent{"test"}}
+	a.events <- slackEvent{Data: unknownEvent{"test"}}
 
 	close(a.events)
 	<-done
@@ -535,7 +535,7 @@ func TestAdapter_LogUnknownEventTypes(t *testing.T) {
 	}()
 
 	type unknownEvent struct{ Text string }
-	evt := slack.RTMEvent{Type: "test_type", Data: unknownEvent{"test"}}
+	evt := slackEvent{Type: "test_type", Data: unknownEvent{"test"}}
 	a.events <- evt
 
 	close(a.events)
@@ -568,7 +568,7 @@ func TestAdapter_RTMError(t *testing.T) {
 		done <- true
 	}()
 
-	a.events <- slack.RTMEvent{Data: &slack.RTMError{
+	a.events <- slackEvent{Data: &slack.RTMError{
 		Code: 42,
 		Msg:  "this did not work",
 	}}
@@ -602,7 +602,7 @@ func TestAdapter_UnmarshallingErrorEvent(t *testing.T) {
 		done <- true
 	}()
 
-	a.events <- slack.RTMEvent{Data: &slack.UnmarshallingErrorEvent{
+	a.events <- slackEvent{Data: &slack.UnmarshallingErrorEvent{
 		ErrorObj: errors.New("failure"),
 	}}
 
