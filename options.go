@@ -15,6 +15,7 @@ type Option func(*Config) error
 // Config contains the configuration of a BotAdapter.
 type Config struct {
 	Token  string
+	VerificationToken string
 	Name   string
 	Debug  bool
 	Logger *zap.Logger
