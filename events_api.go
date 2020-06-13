@@ -178,18 +178,10 @@ func (a *EventsAPIServer) handleMessageEvent(ev *slackevents.MessageEvent) {
 				Text:            ev.Text,
 				Timestamp:       ev.TimeStamp,
 				ThreadTimestamp: ev.ThreadTimeStamp,
-				Edited: &slack.Edited{
-					User:      ev.Edited.User,
-					Timestamp: ev.Edited.TimeStamp,
-				},
 				SubType:        ev.SubType,
 				EventTimestamp: ev.EventTimeStamp.String(),
 				BotID:          ev.BotID,
 				Username:       ev.Username,
-				Icons: &slack.Icon{
-					IconURL:   ev.Icons.IconURL,
-					IconEmoji: ev.Icons.IconEmoji,
-				},
 			},
 		},
 	}
