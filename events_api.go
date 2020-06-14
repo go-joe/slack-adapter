@@ -153,6 +153,9 @@ func (a *EventsAPIServer) handleEvent(innerEvent slackevents.EventsAPIInnerEvent
 	case *slackevents.MessageEvent:
 		a.handleMessageEvent(ev)
 
+	case *slackevents.AppMentionEvent:
+		a.handleAppMentionEvent(ev)
+
 	case *slackevents.ReactionAddedEvent:
 		a.handleReactionAddedEvent(ev)
 
@@ -178,10 +181,27 @@ func (a *EventsAPIServer) handleMessageEvent(ev *slackevents.MessageEvent) {
 				Text:            ev.Text,
 				Timestamp:       ev.TimeStamp,
 				ThreadTimestamp: ev.ThreadTimeStamp,
-				SubType:        ev.SubType,
-				EventTimestamp: ev.EventTimeStamp.String(),
-				BotID:          ev.BotID,
-				Username:       ev.Username,
+				SubType:         ev.SubType,
+				EventTimestamp:  ev.EventTimeStamp.String(),
+				BotID:           ev.BotID,
+				Username:        ev.Username,
+			},
+		},
+	}
+}
+
+func (a *EventsAPIServer) handleAppMentionEvent(ev *slackevents.AppMentionEvent) {
+	a.events <- slackEvent{
+		Type: ev.Type,
+		Data: &slack.MessageEvent{
+			Msg: slack.Msg{
+				Type:            ev.Type,
+				User:            ev.User,
+				Text:            ev.Text,
+				Timestamp:       ev.TimeStamp,
+				ThreadTimestamp: ev.ThreadTimeStamp,
+				Channel:         ev.Channel,
+				BotID:           ev.BotID,
 			},
 		},
 	}
