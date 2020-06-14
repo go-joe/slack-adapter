@@ -219,6 +219,7 @@ func (a *EventsAPIServer) handleAppMentionEvent(ev *slackevents.AppMentionEvent)
 				Timestamp:       ev.TimeStamp,
 				ThreadTimestamp: ev.ThreadTimeStamp,
 				Channel:         ev.Channel,
+				EventTimestamp:  ev.EventTimeStamp.String(),
 				BotID:           ev.BotID,
 			},
 		},
