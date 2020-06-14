@@ -171,6 +171,22 @@ func (a *EventsAPIServer) handleEvent(innerEvent slackevents.EventsAPIInnerEvent
 }
 
 func (a *EventsAPIServer) handleMessageEvent(ev *slackevents.MessageEvent) {
+	edited := &slack.Edited{}
+	if ev.Edited != nil {
+		edited = &slack.Edited{
+			User: ev.Edited.User,
+			Timestamp: ev.Edited.TimeStamp,
+		}
+	}
+
+	icons := &slack.Icon{}
+	if ev.Icons != nil {
+		icons = &slack.Icon{
+			IconURL:   ev.Icons.IconURL,
+			IconEmoji: ev.Icons.IconEmoji,
+		}
+	}
+
 	a.events <- slackEvent{
 		Type: ev.Type,
 		Data: &slack.MessageEvent{
@@ -181,10 +197,12 @@ func (a *EventsAPIServer) handleMessageEvent(ev *slackevents.MessageEvent) {
 				Text:            ev.Text,
 				Timestamp:       ev.TimeStamp,
 				ThreadTimestamp: ev.ThreadTimeStamp,
+				Edited: 		 edited,
 				SubType:         ev.SubType,
 				EventTimestamp:  ev.EventTimeStamp.String(),
 				BotID:           ev.BotID,
 				Username:        ev.Username,
+				Icons: 			 icons,
 			},
 		},
 	}
