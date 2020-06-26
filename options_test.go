@@ -17,7 +17,7 @@ func joeConf(t *testing.T) *joe.Config {
 }
 
 func TestDefaultConfig(t *testing.T) {
-	conf, err := newConf("my-secret-token", "", joeConf(t), nil)
+	conf, err := newConf("my-secret-token", joeConf(t), nil)
 	require.NoError(t, err)
 	assert.NotNil(t, conf.Logger)
 	assert.Equal(t, "full", conf.SendMsgParams.Parse)
@@ -26,7 +26,7 @@ func TestDefaultConfig(t *testing.T) {
 
 func TestWithLogger(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	conf, err := newConf("my-secret-token", "", joeConf(t), []Option{
+	conf, err := newConf("my-secret-token", joeConf(t), []Option{
 		WithLogger(logger),
 	})
 
@@ -35,14 +35,14 @@ func TestWithLogger(t *testing.T) {
 }
 
 func TestWithDebug(t *testing.T) {
-	conf, err := newConf("my-secret-token", "", joeConf(t), []Option{
+	conf, err := newConf("my-secret-token", joeConf(t), []Option{
 		WithDebug(true),
 	})
 
 	require.NoError(t, err)
 	assert.Equal(t, true, conf.Debug)
 
-	conf, err = newConf("my-secret-token", "", joeConf(t), []Option{
+	conf, err = newConf("my-secret-token", joeConf(t), []Option{
 		WithDebug(false),
 	})
 
@@ -51,7 +51,7 @@ func TestWithDebug(t *testing.T) {
 }
 
 func TestWithMessageParams(t *testing.T) {
-	conf, err := newConf("my-secret-token", "", joeConf(t), []Option{
+	conf, err := newConf("my-secret-token", joeConf(t), []Option{
 		WithMessageParams(slack.PostMessageParameters{
 			Parse:     "none",
 			LinkNames: 0,
@@ -65,12 +65,12 @@ func TestWithMessageParams(t *testing.T) {
 }
 
 func TestWithLogUnknownMessageTypes(t *testing.T) {
-	conf, err := newConf("my-secret-token", "", joeConf(t), nil)
+	conf, err := newConf("my-secret-token", joeConf(t), nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, false, conf.LogUnknownMessageTypes, "LogUnknownMessageTypes should be disabled by default")
 
-	conf, err = newConf("my-secret-token", "", joeConf(t), []Option{
+	conf, err = newConf("my-secret-token", joeConf(t), []Option{
 		WithLogUnknownMessageTypes(),
 	})
 	require.NoError(t, err)
@@ -78,7 +78,7 @@ func TestWithLogUnknownMessageTypes(t *testing.T) {
 }
 
 func TestWithListenPassive(t *testing.T) {
-	conf, err := newConf("my-secret-token", "", joeConf(t), []Option{
+	conf, err := newConf("my-secret-token", joeConf(t), []Option{
 		WithListenPassive(),
 	})
 
