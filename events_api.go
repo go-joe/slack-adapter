@@ -28,12 +28,13 @@ type EventsAPIServer struct {
 // EventsAPIAdapter returns a new EventsAPIServer as joe.Module.
 // If you want to use the slack RTM API instead (i.e. using web sockets), you
 // should use the slack.Adapter(…) function instead.
-func EventsAPIAdapter(listenAddr, token string, verificationToken string, opts ...Option) joe.Module {
+func EventsAPIAdapter(listenAddr, token, verificationToken string, opts ...Option) joe.Module {
 	return joe.ModuleFunc(func(joeConf *joe.Config) error {
-		conf, err := newConf(token, verificationToken, joeConf, opts)
+		conf, err := newConf(token, joeConf, opts)
 		if err != nil {
 			return err
 		}
+		conf.VerificationToken = verificationToken
 
 		a, err := NewEventsAPIServer(joeConf.Context, listenAddr, conf)
 		if err != nil {
@@ -171,7 +172,7 @@ func (a *EventsAPIServer) handleEvent(innerEvent slackevents.EventsAPIInnerEvent
 }
 
 func (a *EventsAPIServer) handleMessageEvent(ev *slackevents.MessageEvent) {
-	edited := &slack.Edited{}
+	var edited *slack.Edited
 	if ev.Edited != nil {
 		edited = &slack.Edited{
 			User:      ev.Edited.User,

@@ -57,7 +57,7 @@ type slackRTM interface {
 // pointer to the corresponding github.com/slack-go/slack.MessageEvent instance.
 func Adapter(token string, opts ...Option) joe.Module {
 	return joe.ModuleFunc(func(joeConf *joe.Config) error {
-		conf, err := newConf(token, "", joeConf, opts)
+		conf, err := newConf(token, joeConf, opts)
 		if err != nil {
 			return err
 		}
@@ -72,8 +72,8 @@ func Adapter(token string, opts ...Option) joe.Module {
 	})
 }
 
-func newConf(token string, verificationToken string, joeConf *joe.Config, opts []Option) (Config, error) {
-	conf := Config{Token: token, VerificationToken: verificationToken, Name: joeConf.Name}
+func newConf(token string, joeConf *joe.Config, opts []Option) (Config, error) {
+	conf := Config{Token: token, Name: joeConf.Name}
 	conf.SendMsgParams = slack.PostMessageParameters{
 		LinkNames: 1,
 		Parse:     "full",
