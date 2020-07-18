@@ -97,9 +97,18 @@ func newConf(token string, joeConf *joe.Config, opts []Option) (Config, error) {
 // NewAdapter creates a new *BotAdapter that connects to Slack using the RTM API.
 // Note that you will usually configure the slack adapter as joe.Module (i.e.
 // using the Adapter function of this package).
+//
+// You need to close the adapter if it has been created without error in order
+// to release the connection to the Slack RTM API.
 func NewAdapter(ctx context.Context, conf Config) (*BotAdapter, error) {
 	client := slack.New(conf.Token, slack.OptionDebug(conf.Debug))
 	rtm := client.NewRTM()
+	events := make(chan slackEvent)
+
+	a, err := newAdapter(ctx, client, rtm, events, conf)
+	if err != nil {
+		return nil, err
+	}
 
 	// Start managing the slack Real Time Messaging (RTM) connection.
 	// This goroutine is closed when the BotAdapter disconnects from slack in
@@ -108,7 +117,6 @@ func NewAdapter(ctx context.Context, conf Config) (*BotAdapter, error) {
 
 	// We need to translate the RTMEvent channel into the more generic slackEvent
 	// channel which is used by the BotAdapter internally.
-	events := make(chan slackEvent)
 	go func() {
 		defer close(events)
 		for evt := range rtm.IncomingEvents {
@@ -123,7 +131,7 @@ func NewAdapter(ctx context.Context, conf Config) (*BotAdapter, error) {
 		}
 	}()
 
-	return newAdapter(ctx, client, rtm, events, conf)
+	return a, nil
 }
 
 func newAdapter(ctx context.Context, client slackAPI, rtm slackRTM, events chan slackEvent, conf Config) (*BotAdapter, error) {
