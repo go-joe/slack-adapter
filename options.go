@@ -19,6 +19,7 @@ type Config struct {
 	Name              string
 	Debug             bool
 	Logger            *zap.Logger
+	SlackAPIURL       string // defaults to github.com/slack-go/slack.APIURL but can be changed for unit tests
 
 	// SendMsgParams contains settings that are applied to all messages sent
 	// by the BotAdapter.
@@ -42,6 +43,31 @@ type EventsAPIConfig struct {
 	WriteTimeout      time.Duration
 	TLSConf           *tls.Config
 	CertFile, KeyFile string
+}
+
+func (conf Config) slackOptions() []slack.Option {
+	if conf.Logger == nil {
+		conf.Logger = zap.NewNop()
+	}
+	if conf.SlackAPIURL == "" {
+		conf.SlackAPIURL = slack.APIURL
+	}
+	if conf.SlackAPIURL[len(conf.SlackAPIURL)-1] != '/' {
+		conf.SlackAPIURL += "/"
+	}
+
+	opts := []slack.Option{
+		slack.OptionAPIURL(conf.SlackAPIURL),
+	}
+
+	if conf.Debug {
+		opts = append(opts,
+			slack.OptionDebug(conf.Debug),
+			slack.OptionLog(zap.NewStdLog(conf.Logger)),
+		)
+	}
+
+	return opts
 }
 
 // WithLogger can be used to inject a different logger for the slack adapater.

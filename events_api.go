@@ -51,7 +51,7 @@ func EventsAPIAdapter(listenAddr, token, verificationToken string, opts ...Optio
 // adapter as joe.Module (i.e. using the EventsAPIAdapter function of this package).
 func NewEventsAPIServer(ctx context.Context, listenAddr string, conf Config) (*EventsAPIServer, error) {
 	events := make(chan slackEvent)
-	client := slack.New(conf.Token, slack.OptionDebug(conf.Debug))
+	client := slack.New(conf.Token, conf.slackOptions()...)
 	adapter, err := newAdapter(ctx, client, nil, events, conf)
 	if err != nil {
 		return nil, err
@@ -256,5 +256,11 @@ func (a *EventsAPIServer) Close() error {
 		defer cancel()
 	}
 
-	return a.http.Shutdown(ctx)
+	err := a.http.Shutdown(ctx)
+
+	// After we are sure we do not get any new events from the HTTP server, we
+	// must stop event processing loop by closing the channel.
+	close(a.events)
+
+	return err
 }

@@ -101,7 +101,7 @@ func newConf(token string, joeConf *joe.Config, opts []Option) (Config, error) {
 // You need to close the adapter if it has been created without error in order
 // to release the connection to the Slack RTM API.
 func NewAdapter(ctx context.Context, conf Config) (*BotAdapter, error) {
-	client := slack.New(conf.Token, slack.OptionDebug(conf.Debug))
+	client := slack.New(conf.Token, conf.slackOptions()...)
 	rtm := client.NewRTM()
 	events := make(chan slackEvent)
 
