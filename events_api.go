@@ -111,6 +111,7 @@ func (a *EventsAPIServer) httpHandler(w http.ResponseWriter, r *http.Request) {
 
 	eventsAPIEvent, err := slackevents.ParseEvent(body, a.opts...)
 	if err != nil {
+		a.logger.Error("Failed to parse slack event", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
