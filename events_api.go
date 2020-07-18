@@ -28,12 +28,13 @@ type EventsAPIServer struct {
 // EventsAPIAdapter returns a new EventsAPIServer as joe.Module.
 // If you want to use the slack RTM API instead (i.e. using web sockets), you
 // should use the slack.Adapter(…) function instead.
-func EventsAPIAdapter(listenAddr, token string, opts ...Option) joe.Module {
+func EventsAPIAdapter(listenAddr, token, verificationToken string, opts ...Option) joe.Module {
 	return joe.ModuleFunc(func(joeConf *joe.Config) error {
 		conf, err := newConf(token, joeConf, opts)
 		if err != nil {
 			return err
 		}
+		conf.VerificationToken = verificationToken
 
 		a, err := NewEventsAPIServer(joeConf.Context, listenAddr, conf)
 		if err != nil {
@@ -63,7 +64,7 @@ func NewEventsAPIServer(ctx context.Context, listenAddr string, conf Config) (*E
 
 	a.opts = append(a.opts, slackevents.OptionVerifyToken(
 		&slackevents.TokenComparator{
-			VerificationToken: conf.Token,
+			VerificationToken: conf.VerificationToken,
 		},
 	))
 
@@ -153,6 +154,9 @@ func (a *EventsAPIServer) handleEvent(innerEvent slackevents.EventsAPIInnerEvent
 	case *slackevents.MessageEvent:
 		a.handleMessageEvent(ev)
 
+	case *slackevents.AppMentionEvent:
+		a.handleAppMentionEvent(ev)
+
 	case *slackevents.ReactionAddedEvent:
 		a.handleReactionAddedEvent(ev)
 
@@ -168,6 +172,22 @@ func (a *EventsAPIServer) handleEvent(innerEvent slackevents.EventsAPIInnerEvent
 }
 
 func (a *EventsAPIServer) handleMessageEvent(ev *slackevents.MessageEvent) {
+	var edited *slack.Edited
+	if ev.Edited != nil {
+		edited = &slack.Edited{
+			User:      ev.Edited.User,
+			Timestamp: ev.Edited.TimeStamp,
+		}
+	}
+
+	icons := &slack.Icon{}
+	if ev.Icons != nil {
+		icons = &slack.Icon{
+			IconURL:   ev.Icons.IconURL,
+			IconEmoji: ev.Icons.IconEmoji,
+		}
+	}
+
 	a.events <- slackEvent{
 		Type: ev.Type,
 		Data: &slack.MessageEvent{
@@ -178,18 +198,30 @@ func (a *EventsAPIServer) handleMessageEvent(ev *slackevents.MessageEvent) {
 				Text:            ev.Text,
 				Timestamp:       ev.TimeStamp,
 				ThreadTimestamp: ev.ThreadTimeStamp,
-				Edited: &slack.Edited{
-					User:      ev.Edited.User,
-					Timestamp: ev.Edited.TimeStamp,
-				},
-				SubType:        ev.SubType,
-				EventTimestamp: ev.EventTimeStamp.String(),
-				BotID:          ev.BotID,
-				Username:       ev.Username,
-				Icons: &slack.Icon{
-					IconURL:   ev.Icons.IconURL,
-					IconEmoji: ev.Icons.IconEmoji,
-				},
+				Edited:          edited,
+				SubType:         ev.SubType,
+				EventTimestamp:  ev.EventTimeStamp.String(),
+				BotID:           ev.BotID,
+				Username:        ev.Username,
+				Icons:           icons,
+			},
+		},
+	}
+}
+
+func (a *EventsAPIServer) handleAppMentionEvent(ev *slackevents.AppMentionEvent) {
+	a.events <- slackEvent{
+		Type: ev.Type,
+		Data: &slack.MessageEvent{
+			Msg: slack.Msg{
+				Type:            ev.Type,
+				User:            ev.User,
+				Text:            ev.Text,
+				Timestamp:       ev.TimeStamp,
+				ThreadTimestamp: ev.ThreadTimeStamp,
+				Channel:         ev.Channel,
+				EventTimestamp:  ev.EventTimeStamp.String(),
+				BotID:           ev.BotID,
 			},
 		},
 	}

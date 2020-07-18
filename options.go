@@ -14,10 +14,11 @@ type Option func(*Config) error
 
 // Config contains the configuration of a BotAdapter.
 type Config struct {
-	Token  string
-	Name   string
-	Debug  bool
-	Logger *zap.Logger
+	Token             string
+	VerificationToken string
+	Name              string
+	Debug             bool
+	Logger            *zap.Logger
 
 	// SendMsgParams contains settings that are applied to all messages sent
 	// by the BotAdapter.
