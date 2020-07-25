@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 Nothing so far
 
+## [v2.1.0] - 2020-07-25
+- Add new `EventsAPIAdapter` function to support integrating with Slack via the 
+  [Events API](https://api.slack.com/events-api).
+
 ## [v2.0.0] - 2020-04-12
 - **Breaking change** :fire: : Replace slack library from [nlopes/slack](https://github.com/nlopes/slack)
   to [slack-go/slack](https://github.com/slack-go/slack). This change breaks
@@ -63,7 +67,8 @@ Nothing so far
 ## [v0.1.0] - 2019-03-03
 - Initial alpha release
 
-[Unreleased]: https://github.com/go-joe/slack-adapter/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/go-joe/slack-adapter/compare/v2.1.0...HEAD
+[v2.1.0]: https://github.com/go-joe/slack-adapter/compare/v2.0.0...v2.1.0
 [v2.0.0]: https://github.com/go-joe/slack-adapter/compare/v1.0.0...v2.0.0
 [v1.0.0]: https://github.com/go-joe/slack-adapter/compare/v0.9.0...v1.0.0
 [v0.9.0]: https://github.com/go-joe/slack-adapter/compare/v0.8.0...v0.9.0
