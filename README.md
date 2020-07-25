@@ -15,7 +15,7 @@ This repository contains a module for the [Joe Bot library][joe].
 
 ## Getting Started
 
-This library is packaged using the new [Go modules][go-modules]. You can get it via:
+This library is packaged as [Go module][go-modules]. You can get it via:
 
 ```
 go get github.com/go-joe/slack-adapter
@@ -30,6 +30,8 @@ creating a new bot:
 package main
 
 import (
+	"os"
+
 	"github.com/go-joe/joe"
 	"github.com/go-joe/slack-adapter/v2"
 )
@@ -48,6 +50,9 @@ func main() {
 	}
 }
 ```
+
+If you want to use the [Slack Events API](https://api.slack.com/events-api) you
+need to call the `slack.EventsAPIAdapter(…)` function instead.
 
 The adapter will emit the following events to the robot brain:
 
