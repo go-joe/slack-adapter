@@ -54,7 +54,13 @@ issues:
         - golint
 
     # False positive linting error in unt tests
-    - text: "Using the variable on range scope `c` in function literal"
-      path: ".+_test\\.go"
+    - text: 'Using the variable on range scope `c` in function literal'
+      path: '.+_test\.go'
       linters:
         - scopelint
+
+    # Ignored issue with too big function
+    - text: 'cyclomatic complexity \d+ of func `\(\*BotAdapter\).handleSlackEvents` is high'
+      path: 'adapter\.go'
+      linters:
+        - gocyclo
