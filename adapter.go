@@ -313,6 +313,23 @@ func (a *BotAdapter) Send(text, channelID string) error {
 	return err
 }
 
+func (a *BotAdapter) SendWithSlackOpts(text, channelID string, inOpts ...slack.MsgOption) error {
+	a.logger.Info("Sending message to channel",
+		zap.String("channel_id", channelID),
+		// do not leak actual message content since it might be sensitive
+	)
+
+	opts := []slack.MsgOption{
+		slack.MsgOptionText(text, false),
+		slack.MsgOptionPostMessageParameters(a.sendMsgParams),
+		slack.MsgOptionUser(a.userID),
+		slack.MsgOptionUsername(a.name),
+	}
+	opts = append(opts, inOpts...)
+	_, _, err := a.slack.PostMessageContext(a.context, channelID, opts...)
+	return err
+}
+
 // React implements joe.ReactionAwareAdapter by letting the bot attach the given
 // reaction to the message.
 func (a *BotAdapter) React(reaction reactions.Reaction, msg joe.Message) error {
