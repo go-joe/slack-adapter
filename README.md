@@ -2,7 +2,7 @@
 <p align="center">Connecting joe with the Slack chat application. https://github.com/go-joe/joe</p>
 <p align="center">
 	<a href="https://github.com/go-joe/slack-adapter/releases"><img src="https://img.shields.io/github/tag/go-joe/slack-adapter.svg?label=version&color=brightgreen"></a>
-	<a href="https://circleci.com/gh/go-joe/slack-adapter/tree/master"><img src="https://circleci.com/gh/go-joe/slack-adapter/tree/master.svg?style=shield"></a>
+	<a href="https://github.com/go-joe/slack-adapter/actions/workflows/test.yml"><img src="https://github.com/go-joe/slack-adapter/actions/workflows/test.yml/badge.svg"></a>
 	<a href="https://goreportcard.com/report/github.com/go-joe/slack-adapter"><img src="https://goreportcard.com/badge/github.com/go-joe/slack-adapter"></a>
 	<a href="https://codecov.io/gh/go-joe/slack-adapter"><img src="https://codecov.io/gh/go-joe/slack-adapter/branch/master/graph/badge.svg"/></a>
 	<a href="https://pkg.go.dev/github.com/go-joe/slack-adapter"><img src="https://img.shields.io/badge/godoc-reference-blue.svg?color=blue"></a>
