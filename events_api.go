@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/go-joe/joe"
@@ -102,7 +102,7 @@ func (a *EventsAPIServer) startHTTPServer() {
 }
 
 func (a *EventsAPIServer) httpHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		a.logger.Error("Failed to read request body", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
