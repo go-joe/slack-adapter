@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+Nothing so far
+
+## [v2.2.0] - 2022-01-30
 - Add new `Config.EventsAPIConfig.Middlewar` configuration and corresponding `WithMiddleware(…)` option.
   This fixes #19 by allowing the user to inject a custom HTTP middleware for the
   `EventsAPIServer`, e.g. in order to enable custom (health) endpoints.
@@ -69,7 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v0.1.0] - 2019-03-03
 - Initial alpha release
 
-[Unreleased]: https://github.com/go-joe/slack-adapter/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/go-joe/slack-adapter/compare/v2.2.0...HEAD
+[v2.2.0]: https://github.com/go-joe/slack-adapter/compare/v2.1.0...v2.2.0
 [v2.1.0]: https://github.com/go-joe/slack-adapter/compare/v2.0.0...v2.1.0
 [v2.0.0]: https://github.com/go-joe/slack-adapter/compare/v1.0.0...v2.0.0
 [v1.0.0]: https://github.com/go-joe/slack-adapter/compare/v0.9.0...v1.0.0
