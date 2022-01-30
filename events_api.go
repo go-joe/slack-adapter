@@ -68,9 +68,14 @@ func NewEventsAPIServer(ctx context.Context, listenAddr string, conf Config) (*E
 		},
 	))
 
+	var handler http.Handler = http.HandlerFunc(a.httpHandler)
+	if conf.EventsAPI.Middleware != nil {
+		handler = conf.EventsAPI.Middleware(handler)
+	}
+
 	a.http = &http.Server{
 		Addr:         listenAddr,
-		Handler:      http.HandlerFunc(a.httpHandler),
+		Handler:      handler,
 		ErrorLog:     zap.NewStdLog(conf.Logger),
 		TLSConfig:    conf.EventsAPI.TLSConf,
 		ReadTimeout:  conf.EventsAPI.ReadTimeout,

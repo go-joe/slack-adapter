@@ -1,6 +1,7 @@
 package slack
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/go-joe/joe"
@@ -84,4 +85,22 @@ func TestWithListenPassive(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, true, conf.ListenPassive)
+}
+
+func TestWithMiddleware(t *testing.T) {
+	var ok bool
+	middleware := func(next http.Handler) http.Handler {
+		ok = true // proof this function executed
+		return next
+	}
+
+	conf, err := newConf("my-secret-token", joeConf(t), []Option{
+		WithMiddleware(middleware),
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, conf.EventsAPI.Middleware)
+
+	conf.EventsAPI.Middleware(nil)
+	assert.True(t, ok)
 }

@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-joe/joe"
@@ -16,14 +18,21 @@ import (
 	"github.com/slack-go/slack/slackevents"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
+	"go.uber.org/zap/zaptest/observer"
 )
 
-func newTestEventsAPIServer(t *testing.T) (_ *EventsAPIServer, finish func() (events []interface{})) {
+func newTestEventsAPIServer(t *testing.T, optionalConf ...Config) (_ *EventsAPIServer, finish func() (events []interface{})) {
+	var conf Config
+	if len(optionalConf) > 0 {
+		conf = optionalConf[0]
+	}
+
 	ctx := context.Background()
-	conf := Config{
-		Logger: zaptest.NewLogger(t),
-		Debug:  true,
+	conf.Debug = true
+	if conf.Logger == nil {
+		conf.Logger = zaptest.NewLogger(t)
 	}
 
 	slackAPI := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -151,6 +160,35 @@ func TestEventsAPIServer_HandleReactionAddedEvent(t *testing.T) {
 	assert.Equal(t, "1595070350", actual.MessageID)
 	assert.Equal(t, "U1234", actual.AuthorID)
 	assert.Equal(t, "+1", actual.Reaction.Shortcode)
+}
+
+func TestEventsAPIServer_HTTPHandlerMiddleware(t *testing.T) {
+	middleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if req.URL.Path == "/health" {
+				_, _ = fmt.Fprint(w, "Everything is fine!")
+				return
+			}
+
+			next.ServeHTTP(w, req)
+		})
+	}
+
+	obs, errorLogs := observer.New(zap.ErrorLevel)
+	s, _ := newTestEventsAPIServer(t, Config{
+		Logger: zap.New(obs),
+		EventsAPI: EventsAPIConfig{
+			Middleware: middleware,
+		},
+	})
+
+	req := httptest.NewRequest("GET", "/health", strings.NewReader("Are you okay?"))
+	resp := httptest.NewRecorder()
+
+	s.http.Handler.ServeHTTP(resp, req)
+
+	assert.Equal(t, "Everything is fine!", resp.Body.String())
+	assert.Empty(t, errorLogs.All())
 }
 
 func toJSON(req interface{}) io.Reader {
