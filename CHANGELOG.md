@@ -5,7 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-Nothing so far
+- Add new `Config.EventsAPIConfig.Middlewar` configuration and corresponding `WithMiddleware(…)` option.
+  This fixes #19 by allowing the user to inject a custom HTTP middleware for the
+  `EventsAPIServer`, e.g. in order to enable custom (health) endpoints.
 
 ## [v2.1.0] - 2020-07-25
 - Add new `EventsAPIAdapter` function to support integrating with Slack via the 

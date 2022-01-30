@@ -3,6 +3,7 @@ package slack
 import (
 	"crypto/tls"
 	"errors"
+	"net/http"
 	"time"
 
 	"github.com/slack-go/slack"
@@ -38,6 +39,7 @@ type Config struct {
 
 // EventsAPIConfig contains the configuration of an EventsAPIServer.
 type EventsAPIConfig struct {
+	Middleware        func(next http.Handler) http.Handler
 	ShutdownTimeout   time.Duration
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
@@ -164,6 +166,15 @@ func WithReadTimeout(d time.Duration) Option {
 func WithWriteTimeout(d time.Duration) Option {
 	return func(conf *Config) error {
 		conf.EventsAPI.WriteTimeout = d
+		return nil
+	}
+}
+
+// WithMiddleware is an option for the EventsAPIServer that allows the user to
+// inject an HTTP middleware to the HTTP server.
+func WithMiddleware(mw func(next http.Handler) http.Handler) Option {
+	return func(conf *Config) error {
+		conf.EventsAPI.Middleware = mw
 		return nil
 	}
 }
