@@ -4,9 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
-	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/go-joe/joe"
@@ -213,21 +210,11 @@ func TestAdapter_PassiveMessage(t *testing.T) {
 func TestAdapter_Send(t *testing.T) {
 	a, slackAPI := newTestAdapter(t)
 
-	matchOption := func(expectedName string) interface{} {
-		return mock.MatchedBy(func(actual slack.MsgOption) bool {
-			pc := reflect.ValueOf(actual).Pointer()
-			name := runtime.FuncForPC(pc).Name()
-			name = strings.TrimPrefix(name, "github.com/slack-go/")
-			name = strings.TrimSuffix(name, ".func1")
-			return assert.Equal(t, expectedName, name)
-		})
-	}
-
 	slackAPI.On("PostMessageContext", a.context, "C1H9RESGL",
-		matchOption("slack.MsgOptionText"),
-		matchOption("slack.MsgOptionPostMessageParameters"),
-		matchOption("slack.MsgOptionUser"),
-		matchOption("slack.MsgOptionUsername"),
+		mock.AnythingOfType("slack.MsgOption"), // slack.MsgOptionText
+		mock.AnythingOfType("slack.MsgOption"), // slack.MsgOptionPostMessageParameters
+		mock.AnythingOfType("slack.MsgOption"), // slack.MsgOptionUser
+		mock.AnythingOfType("slack.MsgOption"), // slack.MsgOptionUsername
 	).Return("", "", nil)
 
 	err := a.Send("Hello World", "C1H9RESGL")
