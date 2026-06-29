@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 Nothing so far
 
+## [v2.3.0] - 2026-06-29
+- Update `github.com/slack-go/slack` from v0.6.5 to v0.23.1
+- Bump the minimum required Go version to 1.25 (required by the new slack-go release)
+- Modernize the CI workflows and migrate the golangci-lint configuration to the v2 format
+
 ## [v2.2.0] - 2022-01-30
 - Add new `Config.EventsAPIConfig.Middlewar` configuration and corresponding `WithMiddleware(…)` option.
   This fixes #19 by allowing the user to inject a custom HTTP middleware for the
@@ -72,7 +77,8 @@ Nothing so far
 ## [v0.1.0] - 2019-03-03
 - Initial alpha release
 
-[Unreleased]: https://github.com/go-joe/slack-adapter/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/go-joe/slack-adapter/compare/v2.3.0...HEAD
+[v2.3.0]: https://github.com/go-joe/slack-adapter/compare/v2.2.0...v2.3.0
 [v2.2.0]: https://github.com/go-joe/slack-adapter/compare/v2.1.0...v2.2.0
 [v2.1.0]: https://github.com/go-joe/slack-adapter/compare/v2.0.0...v2.1.0
 [v2.0.0]: https://github.com/go-joe/slack-adapter/compare/v1.0.0...v2.0.0
