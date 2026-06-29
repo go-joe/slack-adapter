@@ -229,13 +229,13 @@ func (a *BotAdapter) handleMessageEvent(ev *slack.MessageEvent, brain joe.EventE
 
 	// check if we have a DM, or standard channel post
 	selfLink := a.userLink(a.userID)
-	direct := strings.HasPrefix(ev.Msg.Channel, "D")
-	if !direct && !strings.Contains(ev.Msg.Text, selfLink) && !a.listenPassive {
+	direct := strings.HasPrefix(ev.Channel, "D")
+	if !direct && !strings.Contains(ev.Text, selfLink) && !a.listenPassive {
 		// msg not for us!
 		return
 	}
 
-	text := strings.TrimSpace(strings.TrimPrefix(ev.Msg.Text, selfLink))
+	text := strings.TrimSpace(strings.TrimPrefix(ev.Text, selfLink))
 	brain.Emit(joe.ReceiveMessageEvent{
 		Text:     text,
 		Channel:  ev.Channel,

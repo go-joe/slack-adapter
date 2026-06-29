@@ -179,10 +179,10 @@ func (a *EventsAPIServer) handleEvent(innerEvent slackevents.EventsAPIInnerEvent
 
 func (a *EventsAPIServer) handleMessageEvent(ev *slackevents.MessageEvent) {
 	var edited *slack.Edited
-	if ev.Edited != nil {
+	if ev.Message != nil && ev.Message.Edited != nil {
 		edited = &slack.Edited{
-			User:      ev.Edited.User,
-			Timestamp: ev.Edited.TimeStamp,
+			User:      ev.Message.Edited.User,
+			Timestamp: ev.Message.Edited.Timestamp,
 		}
 	}
 
@@ -206,7 +206,7 @@ func (a *EventsAPIServer) handleMessageEvent(ev *slackevents.MessageEvent) {
 				ThreadTimestamp: ev.ThreadTimeStamp,
 				Edited:          edited,
 				SubType:         ev.SubType,
-				EventTimestamp:  ev.EventTimeStamp.String(),
+				EventTimestamp:  ev.EventTimeStamp,
 				BotID:           ev.BotID,
 				Username:        ev.Username,
 				Icons:           icons,
@@ -226,7 +226,7 @@ func (a *EventsAPIServer) handleAppMentionEvent(ev *slackevents.AppMentionEvent)
 				Timestamp:       ev.TimeStamp,
 				ThreadTimestamp: ev.ThreadTimeStamp,
 				Channel:         ev.Channel,
-				EventTimestamp:  ev.EventTimeStamp.String(),
+				EventTimestamp:  ev.EventTimeStamp,
 				BotID:           ev.BotID,
 			},
 		},
